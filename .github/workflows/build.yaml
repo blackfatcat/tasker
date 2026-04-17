@@ -1,4 +1,4 @@
-name: Build Tasker Win+VS26
+name: Build Tasker Windows
 
 on:
   push:
