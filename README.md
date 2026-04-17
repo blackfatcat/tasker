@@ -6,6 +6,17 @@ Designed for scalability, low latency, and real‑world multithreaded workloads 
 
 ---
 
+## Building ⚙️
+Tasker uses CMake as its build configurator. For ease of use I have added a build.bat that will generate the solution files for VS26 on Windowns. If on another platform you can run CMake with your desired generator:
+
+```
+cmake -G "Generator of choice" CMakeLists.txt
+```
+
+#### Build options:
+* `-DBUILD_EXAMPLES_ALL` - builds all example files
+* `-DBUILD_EXAMPLE_NAME_OF_EXAMPLE_CPP` - builds a specific example
+
 ## 🚀 Core Features
 
 * [ ] Can scale to the number of cores for the current system.
