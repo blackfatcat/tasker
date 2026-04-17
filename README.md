@@ -14,8 +14,8 @@ cmake -G "Generator of choice" CMakeLists.txt
 ```
 
 #### Build options:
-* `-DBUILD_EXAMPLES_ALL` - builds all example files
-* `-DBUILD_EXAMPLE_NAME_OF_EXAMPLE_CPP` - builds a specific example
+* `-DTSKR_BUILD_EXAMPLES_ALL` - builds all example files
+* `-DTSKR_BUILD_EXAMPLE_NAME_OF_EXAMPLE_CPP` - builds a specific example
 
 ## 🚀 Core Features
 
