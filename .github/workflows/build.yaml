@@ -1,0 +1,30 @@
+name: Build Tasker Win+VS26
+
+on:
+  push:
+      branches: [ main ]
+  pull_request:
+      branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure with CMake (Visual Studio 18 2026)
+        run: |
+          cmake -S . -B build `
+            -G "Visual Studio 18 2026" `
+            -A x64 `
+            -DTSKR_BUILD_EXAMPLES_ALL=1
+
+      - name: Build
+        run: cmake --build build --config Release
