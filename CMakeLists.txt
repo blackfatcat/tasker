@@ -12,6 +12,12 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Optimised" CACHE STRING "" FORCE)
 set(CMAKE_SUPPRESS_REGENERATION true)
 set(CMAKE_BUILD_PARALLEL_LEVEL 8)
 
+# MSVC ONLY COMPILE OPTIONS
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(CMAKE_CXX_FLAGS_OPTIMISED "/O2 /Zi /DEBUG" CACHE STRING "Flags for Optimised configuration" FORCE)
+    set(CMAKE_EXE_LINKER_FLAGS_OPTIMISED "/DEBUG /OPT:REF /OPT:ICF" CACHE STRING "Linker flags for Optimised configuration" FORCE)
+endif()
+
 if(CMAKE_SYSTEM_NAME MATCHES Windows)
     add_definitions(-D${PROJECT_NAME_UPPER}_WINDOWS)
     set(platform "win")
