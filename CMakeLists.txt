@@ -68,3 +68,15 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC
         src/public
 )
+
+# Build Examples
+if(${TSKR_BUILD_EXAMPLES_ALL})
+    file(GLOB EXAMPLE_SOURCES "examples/*.cpp")
+
+    foreach(example ${EXAMPLE_SOURCES})
+        get_filename_component(example_name ${example} NAME_WE)
+
+        add_executable(${example_name} ${example})
+        target_link_libraries(${example_name} PRIVATE ${PROJECT_NAME})
+    endforeach()
+endif(${TSKR_BUILD_EXAMPLES_ALL})
