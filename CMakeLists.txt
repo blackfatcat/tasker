@@ -77,6 +77,10 @@ target_include_directories(${PROJECT_NAME}
 
 # Build Examples
 if(${TSKR_BUILD_EXAMPLES_ALL})
+
+    # Library will propagate the CXX standart to the Examples projects as well
+    target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+
     file(GLOB EXAMPLE_SOURCES "examples/*.cpp")
 
     foreach(example ${EXAMPLE_SOURCES})
