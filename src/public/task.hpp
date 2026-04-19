@@ -8,10 +8,11 @@ namespace tskr
         template<typename>
         struct function_traits;
 
+        // call operator
         template<typename T>
         struct function_traits : function_traits<decltype(&T::operator())> {};
 
-        // const operator()
+        // const member function
         template<typename C, typename R, typename... Args>
         struct function_traits<R(C::*)(Args...) const>
         {
@@ -19,7 +20,7 @@ namespace tskr
             using args = std::tuple<Args...>;
         };
 
-        // non-const operator()
+        // non-const member function
         template<typename C, typename R, typename... Args>
         struct function_traits<R(C::*)(Args...)>
         {
@@ -35,6 +36,7 @@ namespace tskr
             using args = std::tuple<Args...>;
         };
     }
+
     /// @brief 
     /// A wrapper around either a free function, callable object or a member function.
     /// Defines a single Task for execution
@@ -47,9 +49,9 @@ namespace tskr
 
     /// @brief 
     /// Collection of Tasks and their dependencies
-    /// @tparam TasksTuple 
-    /// @tparam AfterTuple 
-    /// @tparam BeforeTuple 
+    /// @tparam TasksTuple Tasks to be ran in parallel
+    /// @tparam AfterTuple Tasks in TasksTuple will be executed after the ones specified by AfterTuple
+    /// @tparam BeforeTuple Tasks in TasksTuple will be executed before the ones specified by BeforeTuple
     template<typename TasksTuple, typename AfterTuple, typename BeforeTuple>
     struct TaskConfig
     {
@@ -82,7 +84,8 @@ namespace tskr
 
     };
 
-    // Wrapper for the comma operator and just a bunch of functions without dependencies
+    /// @brief
+    /// Wrapper for the comma operator and just a bunch of functions without dependencies
     template<typename... Ts>
     using TaskConfigBase = TaskConfig<
         std::tuple<Ts...>,
@@ -91,8 +94,8 @@ namespace tskr
     >;
 } // namespace tskr
 
-
-
+/// @brief
+///Syntax sugar so that `(TaskFn<fun1>, TaskFn<fun2>)` returns a TaskConfig for chaining before and after calls
 template<typename A, typename B >
 constexpr auto operator,(A, B)
 {
