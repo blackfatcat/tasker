@@ -1,4 +1,4 @@
-name: Build Tasker Windows
+name: Build Tasker
 
 on:
   push:
