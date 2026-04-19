@@ -3,6 +3,7 @@
 #include "task.hpp"
 #include "scheduler.hpp"
 #include "types.hpp"
+#include "worker_pool.hpp"
 
 namespace tskr
 {
@@ -11,6 +12,8 @@ namespace tskr
     private:
         std::vector<std::size_t> m_ScheduleHashes;
         std::vector<std::size_t> m_ParallelScheduleHashes;
+
+        WorkerPool workers;
     public:
         Tasker(/* args */);
         ~Tasker();
@@ -42,6 +45,13 @@ namespace tskr
         template<typename Schedule, typename ...Tasks>
         Tasker& add_tasks(TaskConfig<Tasks...> tasks) { return *this; }
 
+        /// @brief 
+        /// Kick off the execution of the schedules and tasks
+        void run();
+
+        /// @brief 
+        /// Shut down all work
+        void halt();
 
     private:
         template <typename T>
@@ -62,14 +72,5 @@ namespace tskr
                 m_ScheduleHashes.push_back(typeid(T).hash_code());
             }
         }
-    };
-    
-    Tasker::Tasker(/* args */)
-    {
-    }
-    
-    Tasker::~Tasker()
-    {
-    }
-    
+    };    
 } // namespace tskr
