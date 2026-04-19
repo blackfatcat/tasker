@@ -3,6 +3,7 @@
 
 namespace tskr
 {
+    /// @brief
     /// @tparam Ts a pack of types that will mark schedules for parallel execution
     template<typename... Ts>
     struct Parallel {};
