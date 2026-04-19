@@ -1,4 +1,5 @@
 #include <concepts>
+#include <atomic>
 
 namespace tskr
 {
@@ -36,6 +37,15 @@ namespace tskr
             using args = std::tuple<Args...>;
         };
     }
+
+    struct Task
+    {
+        using Fn = void(*)(void*);
+
+        Fn fun;
+        void* data;
+        std::atomic<int> deps{ 0 };
+    };
 
     /// @brief 
     /// A wrapper around either a free function, callable object or a member function.
