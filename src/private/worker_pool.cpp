@@ -54,7 +54,7 @@ namespace tskr
                 pthread_setaffinity_np(pthread_self(), size, cpu_set)
 
                 CPU_ZERO_S(size, cpu_set);
-                CPU_FREE(cpuset);
+                CPU_FREE(cpu_set);
 #endif
                 // Aaaaand... we are offf!!
                 worker_loop(worker_id);
