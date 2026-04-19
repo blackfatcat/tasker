@@ -18,7 +18,7 @@ namespace tskr
         /// @brief 
         /// @tparam ...Schedules a pack of unique types that will be registered as schedules. 
         /// @note The order the schedules are typed in will be the order they will be executed in as well,
-        /// unless Unless preceeded with Parallel<> in which case the schedules inside it will all be ran together
+        /// unless preceeded with Parallel<> in which case the schedules inside it will all be ran together
         /// @return reference to self for chaining
         template<typename ...Schedules>
         Tasker& add_schedules() 
@@ -27,16 +27,17 @@ namespace tskr
             m_ParallelScheduleHashes.reserve(sizeof...(Schedules));
 
             // Gets the hash of each schedule and inserts it into the vector through fold magic
-            // Unfolds any nested declaration like With<>, Before<>, After<>
+            // Unfolds any nested declaration like Parallel<>
             (process_schedule_types<Schedules>(), ...);
 
             return *this;
         }
 
         /// @brief 
-        /// @tparam Schedule unique type registered as a schedule with `add_schedule`
+        /// @tparam Schedule unique type, registered as a schedule with `add_schedule`
         /// @param tasks a task config object that can be constructed with a bunch of functions or collable objects
-        /// @note Tasks can be organised within a `TaskConfig` with calls to before() and after(), if not, the scheduler will try to execute them in parallel
+        /// @note Tasks can be organised within a `TaskConfig` with calls to before() and after(), if not, the scheduler will try to execute them in parallel.
+        /// See (TODO: insert git link) for examples
         /// @return reference to self for chaining
         template<typename Schedule, typename ...Tasks>
         Tasker& add_tasks(TaskConfig<Tasks...> tasks) { return *this; }
@@ -49,7 +50,7 @@ namespace tskr
             // TODO: Run these in parallel
             if constexpr (impl::is_parallel<T>::value)
             {
-                // T is With<A,B,C>
+                // T is Parallel<A,B,C>
                 std::apply([this](auto... inner){
                     (m_ScheduleHashes.push_back(typeid(inner).hash_code()), ...);
                     (m_ParallelScheduleHashes.push_back(typeid(inner).hash_code()), ...);
