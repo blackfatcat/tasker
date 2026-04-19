@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 
 #include "tasker.hpp"
 
@@ -48,6 +49,13 @@ int main()
     tasker.add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}).after(tskr::TaskFn<task3>{}));
 
     std::cout << "Scheduled" << std::endl;
+
+    tasker.run();
+
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(1s);
+
+    tasker.halt();
 
     return 0;
 }

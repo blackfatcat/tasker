@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.31)
 
 # Set project name and uppercase version
 set(PROJECT_NAME "tasker")
+set(PROJECT_NAME_UPPER "")
+
+string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPER) # For defines
 
 set(root_dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -21,6 +24,9 @@ endif()
 if(CMAKE_SYSTEM_NAME MATCHES Windows)
     add_definitions(-D${PROJECT_NAME_UPPER}_WINDOWS)
     set(platform "win")
+elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
+    add_definitions(-D${PROJECT_NAME_UPPER}_LINUX)
+    set(platform "linux")
 elseif(CMAKE_SYSTEM_NAME MATCHES Android)
     add_definitions(-D${PROJECT_NAME_UPPER}_ANDROID)
     set(platform "android")
