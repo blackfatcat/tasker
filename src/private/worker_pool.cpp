@@ -43,15 +43,15 @@ namespace tskr
 #ifdef TASKER_LINUX
                 // (Linux only!) Create a CPU set with reserved space for the number of threads
                 cpu_set_t* cpu_set;
-                cpu_set = CPU_ALLOC(thread_count);
+                cpu_set = CPU_ALLOC(m_ThreadCount);
 
                 size_t size;
-                size = CPU_ALLOC_SIZE(thread_count);
+                size = CPU_ALLOC_SIZE(m_ThreadCount);
 
                 CPU_ZERO_S(size, cpu_set);
 
                 CPU_SET_S(worker_id, size, cpuset);
-                pthread_setaffinity_np(pthread_self(), size, cpu_set)
+                pthread_setaffinity_np(pthread_self(), size, cpu_set);
 
                 CPU_ZERO_S(size, cpu_set);
                 CPU_FREE(cpu_set);
