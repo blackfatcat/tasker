@@ -31,38 +31,37 @@ namespace tskr
     {
         m_Workers.reserve(m_ThreadCount);
 
-        // (Linux only!) Create a CPU set with reserved space for the number of threads
-#ifdef TASKER_LINUX
-        cpu_set_t* cpu_set;
-        cpu_set = CPU_ALLOC(thread_count);
-
-        size_t size;
-        size = CPU_ALLOC_SIZE(thread_count);
-
-        CPU_ZERO_S(size, cpu_set);
-#endif
-
         for (uint8_t worker_id = 0; worker_id < m_ThreadCount; worker_id++)
         {
-            m_Workers.emplace_back([this, worker_id] {
+            m_Workers.emplace_back([this, worker_id]() {
                 // Set affinity for each tread created. !! CURRENTLY each thread will like just one core (the one its created on)
                 // TODO: use affinity mask for multi-core affinities
 #ifdef TASKER_WINDOWS
                 SetThreadAffinityMask(GetCurrentThread(), 1ull << worker_id);
 #endif
+
 #ifdef TASKER_LINUX
+                // (Linux only!) Create a CPU set with reserved space for the number of threads
+                cpu_set_t* cpu_set;
+                cpu_set = CPU_ALLOC(thread_count);
+
+                size_t size;
+                size = CPU_ALLOC_SIZE(thread_count);
+
+                CPU_ZERO_S(size, cpu_set);
+
                 CPU_SET_S(worker_id, size, cpuset);
                 pthread_setaffinity_np(pthread_self(), size, cpu_set)
-                    CPU_ZERO_S(size, cpu_set);
-#endif
 
+                CPU_ZERO_S(size, cpu_set);
+                CPU_FREE(cpuset);
+#endif
                 // Aaaaand... we are offf!!
                 worker_loop(worker_id);
-                });
+            });
         }
 
 #ifdef TASKER_LINUX
-        CPU_FREE(cpuset);
 #endif
     }
     
