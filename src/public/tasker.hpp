@@ -17,7 +17,7 @@ namespace tskr
     public:
         Tasker(/* args */);
         ~Tasker();
-        
+        // TODO: introduce an execution policy (single, repeated - to simulate a game loop, etc.) 
         /// @brief 
         /// @tparam ...Schedules a pack of unique types that will be registered as schedules. 
         /// @note The order the schedules are typed in will be the order they will be executed in as well,
