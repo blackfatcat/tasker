@@ -50,7 +50,7 @@ namespace tskr
 
                 CPU_ZERO_S(size, cpu_set);
 
-                CPU_SET_S(worker_id, size, cpuset);
+                CPU_SET_S(worker_id, size, cpu_set);
                 pthread_setaffinity_np(pthread_self(), size, cpu_set);
 
                 CPU_ZERO_S(size, cpu_set);
