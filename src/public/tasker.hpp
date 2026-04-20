@@ -47,6 +47,9 @@ namespace tskr
         template<typename Schedule, typename ...Tasks>
         Tasker& add_tasks(TaskConfig<Tasks...> tasks) { return *this; }
 
+        template<typename Schedule, typename ...Tasks>
+        Tasker& add_tasks(Tasks... tasks) { return *this; }
+
         /// @brief 
         /// Kick off the execution of the schedules and tasks
         void run();
