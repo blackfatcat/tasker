@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 
 #include "task.hpp"
 #include "scheduler.hpp"
@@ -14,6 +15,8 @@ namespace tskr
     private:
         std::vector<std::size_t> m_ScheduleHashes;
         std::vector<std::size_t> m_ParallelScheduleHashes;
+
+        std::unordered_map<std::size_t, Task> m_TasksPerSchedule;
 
         WorkerPool workers;
     public:
@@ -45,10 +48,23 @@ namespace tskr
         /// See (TODO: insert git link) for examples
         /// @return reference to self for chaining
         template<typename Schedule, typename ...Tasks>
-        Tasker& add_tasks(TaskConfig<Tasks...> tasks) { return *this; }
+        Tasker& add_tasks(TaskConfig<Tasks...> tasks) {
+
+            using tasks_ts = typename TaskConfig<Tasks...>::tasks_t;
+            using after_ts = typename TaskConfig<Tasks...>::after_t;
+            using before_ts = typename TaskConfig<Tasks...>::before_t;
+
+            std::unordered_map<KEY_TYPE, TaskNode*> map = TaskNode::build_node_map(tasks_ts{});
+            return *this;
+        }
 
         template<typename Schedule, typename ...Tasks>
-        Tasker& add_tasks(Tasks... tasks) { return *this; }
+        Tasker& add_tasks(Tasks... tasks)
+        {
+            //auto cfg = TaskConfig<std::tuple<Tasks...>, std::tuple<>, std::tuple<>>{};
+            //add_tasks<Schedule>();
+            return *this;
+        }
 
         /// @brief 
         /// Kick off the execution of the schedules and tasks
