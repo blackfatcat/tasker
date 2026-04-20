@@ -22,8 +22,10 @@ SOFTWARE.
 
 #pragma once
 
+#ifdef TASKER_LINUX
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wno-interference-size"
+#endif
 
 #include <atomic>
 #include <cassert>
@@ -297,4 +299,6 @@ using MPMCQueue = mpmc::Queue<T, Allocator>;
 
 } // namespace rigtorp
 
+#ifdef TASKER_LINUX
 #pragma clang diagnostic pop
+#endif
