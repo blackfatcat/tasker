@@ -15,8 +15,22 @@
 
 namespace tskr
 {
-    WorkerPool::WorkerPool(uint8_t thread_count) : m_ThreadCount(thread_count)
+    thread_local int WorkerPool::s_WorkerId = -1;
+
+    WorkerPool::WorkerPool(uint8_t thread_count, size_t per_worker_cap) 
+        : 
+        m_ThreadCount(thread_count),
+        m_GlobalQueue{per_worker_cap * (size_t)thread_count},
+        m_WorkerCap(per_worker_cap)
     {
+        m_Workers.reserve(m_ThreadCount);
+        m_LocalQueues.reserve(m_ThreadCount);
+
+        for (uint8_t worker_id = 0; worker_id < m_ThreadCount; worker_id++)
+        {
+            // Create worker queues
+            m_LocalQueues.emplace_back(std::make_unique<WorkStealingDeque>(m_WorkerCap));
+        }
     }
     
     WorkerPool::~WorkerPool()
@@ -27,13 +41,31 @@ namespace tskr
         }
     }
 
+    void WorkerPool::enqueue(Task* task)
+    {
+        int id = s_WorkerId;
+
+        m_TasksRemaining.fetch_add(1, std::memory_order_release);
+
+        if (id >= 0 && id < m_ThreadCount)
+        {
+            // Worker thread called -> local push
+            if (!m_LocalQueues[id]->try_push(task))
+                m_GlobalQueue.push(task); // Fall back to global if local is empty
+        }
+        else
+        {
+            m_GlobalQueue.push(task);
+        }
+    }
+
     void WorkerPool::work()
     {
-        m_Workers.reserve(m_ThreadCount);
-
         for (uint8_t worker_id = 0; worker_id < m_ThreadCount; worker_id++)
         {
             m_Workers.emplace_back([this, worker_id]() {
+                s_WorkerId = worker_id;
+
                 // Set affinity for each tread created. !! CURRENTLY each thread will like just one core (the one its created on)
                 // TODO: use affinity mask for multi-core affinities
 #ifdef TASKER_WINDOWS
@@ -64,6 +96,19 @@ namespace tskr
 #ifdef TASKER_LINUX
 #endif
     }
+
+    void WorkerPool::wait_for_all()
+    {
+        while (m_TasksRemaining.load(std::memory_order_acquire) > 0) {}
+    }
+
+    bool WorkerPool::try_wait_for_all()
+    {
+        if (m_TasksRemaining.load(std::memory_order_acquire) > 0)
+            return false;
+        
+        return true;
+    }
     
     void WorkerPool::stop()
     {
@@ -78,12 +123,39 @@ namespace tskr
 
     void WorkerPool::worker_loop(int worker_id)
     {
+        auto& local_queue = m_LocalQueues[worker_id];
+
         // HOT PATH! Ordering is not that important when shutting down...
         while (!m_Shutdown.load(std::memory_order_relaxed))
         {
-            // TODO: Try pop local queue
-            // TODO: Try steal from another, if none left
-            // TODO: yield, if nothing
+            Task* task = nullptr;
+
+            // Local queue empty?
+            if (!local_queue->try_pop(task))
+            {
+                // Try stealing from other workers
+                for (size_t i = 0; i < m_ThreadCount && !task; i++)
+                {
+                    if (i == worker_id) continue;
+                    m_LocalQueues[i]->try_steal(task);
+                }
+            }
+
+            // Still no task? 
+            if (!task)
+                m_GlobalQueue.try_pop(task);
+
+            if (!task)
+            {
+                // No work to do...
+                std::this_thread::yield();
+                continue;
+            }
+
+            task->fun(task->data);
+
+            m_TasksRemaining.fetch_sub(1, std::memory_order_release);
+            
             // TODO: check for task deps
             // TODO: run task
             // TODO: enqueue dependencies
