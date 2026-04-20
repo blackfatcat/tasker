@@ -22,6 +22,9 @@ SOFTWARE.
 
 #pragma once
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wno-interference-size"
+
 #include <atomic>
 #include <cassert>
 #include <cstddef> // offsetof
@@ -293,3 +296,5 @@ template <typename T,
 using MPMCQueue = mpmc::Queue<T, Allocator>;
 
 } // namespace rigtorp
+
+#pragma clang diagnostic pop
