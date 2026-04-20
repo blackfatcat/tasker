@@ -8,6 +8,7 @@ namespace tskr
 
     Tasker::~Tasker()
     {
+        halt();
     }
 
 	void Tasker::run()
@@ -18,6 +19,7 @@ namespace tskr
 
     void Tasker::halt()
     {
+        workers.wait_for_all();
         workers.stop();
     }
 }
