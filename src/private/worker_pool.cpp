@@ -35,10 +35,7 @@ namespace tskr
     
     WorkerPool::~WorkerPool()
     {
-        if (!m_Shutdown.load(std::memory_order_acquire))
-        {
-            stop();
-        }
+        stop();
     }
 
     void WorkerPool::enqueue(Task* task)
@@ -112,8 +109,9 @@ namespace tskr
     
     void WorkerPool::stop()
     {
-        m_Shutdown.store(true, std::memory_order_release);
-
+        bool shutdown = false;
+        if (m_Shutdown.compare_exchange_strong(shutdown, true, std::memory_order_acq_rel))
+        
         // Wait for all to complete
         for (auto& worker : m_Workers)
         {
@@ -152,7 +150,7 @@ namespace tskr
                 continue;
             }
 
-            task->fun(task->data);
+            task->fun(task->payload);
 
             m_TasksRemaining.fetch_sub(1, std::memory_order_release);
             
