@@ -49,6 +49,9 @@ namespace tskr
         std::atomic<int> deps{ 0 };
     };
 
+    template<typename TasksTuple, typename AfterTuple, typename BeforeTuple>
+    struct TaskConfig;
+
     /// @brief 
     /// A wrapper around either a free function, callable object or a member function.
     /// Defines a single Task for execution
@@ -57,6 +60,29 @@ namespace tskr
     {
         using task_traits = impl::function_traits<decltype(Fn)>;
         using args = typename task_traits::args;
+
+        /// @brief Schedule this function `after` all specified with this call have finished
+        /// @param AfterTs Functions to be executed before this one
+        template<typename... AfterTs>
+        auto after(AfterTs...) const
+        {
+            return TaskConfig<
+                std::tuple<decltype(Fn)>, 
+                std::tuple<AfterTs...>,
+                std::tuple<>
+            >{};
+        }
+
+        /// @brief Schedule this function `before` all specified with this call have finished
+        /// @param AfterTs Functions to be executed after this one
+        template<typename... BeforeTs>
+        auto before(BeforeTs...) const
+        {
+            return TaskConfig<
+                std::tuple<decltype(Fn)>,
+                std::tuple<>,
+                std::tuple<BeforeTs...>>{};
+        }
     };
 
     /// @brief 
@@ -72,6 +98,8 @@ namespace tskr
         using after_t = AfterTuple;
         using before_t = BeforeTuple;
 
+        /// @brief Schedule these functions `after` all specified with this call have finished
+        /// @param AfterTs Functions to be executed before the ones in the TaskConfig
         template<typename... AfterTs>
         auto after(AfterTs...) const
         {
@@ -83,6 +111,8 @@ namespace tskr
             return TaskConfig<TasksTuple, merged_afters, BeforeTuple>{};
         }
 
+        /// @brief Schedule these functions `before` all specified with this call have finished
+        /// @param AfterTs Functions to be executed after the ones in the TaskConfig
         template<typename... BeforeTs>
         auto before(BeforeTs...) const
         {
