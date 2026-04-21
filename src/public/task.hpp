@@ -185,22 +185,22 @@ namespace tskr
     struct TaskNode
     {
         std::unique_ptr<Task> task = nullptr;
-        std::vector<TaskNode*> dependents; // outgoing edges
-        std::atomic<int> deps_remaining;   // incoming edges
+        std::vector<std::shared_ptr<TaskNode>> dependents; // outgoing edges
+        std::atomic<int> deps_remaining;                   // incoming edges
 
         template<typename TaskFnT>
-        static TaskNode* make_from_taskfn(TaskFnT task)
+        static std::shared_ptr<TaskNode> make_from_taskfn(TaskFnT task)
         {
-            TaskNode* node = new TaskNode;
+            auto node = std::make_shared<TaskNode>();
             node->task = task.make_task();
             node->deps_remaining.store(0, std::memory_order_relaxed);
             return node;
         }
 
         template<typename... Ts>
-        static std::unordered_map<KEY_TYPE, TaskNode*> build_node_map(std::tuple<Ts...> tasks)
+        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(std::tuple<Ts...> tasks)
         {
-            std::unordered_map<KEY_TYPE, TaskNode*> map;
+            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map;
 
             impl::for_each_in_tuple(tasks, [&](auto task) {
                 map.emplace(typeid(task).accessor(), TaskNode::make_from_taskfn(task));
@@ -210,7 +210,7 @@ namespace tskr
         }
 
         template<typename... Ts>
-        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, TaskNode*>& map)
+        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>>& map)
         {
             using tasks_ts = typename TaskConfig<Ts...>::tasks_t;
             using after_ts = typename TaskConfig<Ts...>::after_t;
@@ -226,12 +226,12 @@ namespace tskr
             // increase dependency count for task
             impl::for_each_in_tuple(after_ts{}, [&](auto after_t) {
                 impl::for_each_in_tuple(tasks_ts{}, [&](auto task_t) {
-                    TaskNode* task = map[typeid(task_t).accessor()];
+                    std::shared_ptr<TaskNode> task = map[typeid(task_t).accessor()];
 
                     if (!map.contains(typeid(after_t).accessor()))
                         map.emplace(typeid(after_t).accessor(), TaskNode::make_from_taskfn(after_t));
 
-                    TaskNode* after = map[typeid(after_t).accessor()];
+                    std::shared_ptr<TaskNode> after = map[typeid(after_t).accessor()];
 
                     after->dependents.push_back(task);
                     task->deps_remaining.fetch_add(1, std::memory_order_relaxed);
@@ -241,12 +241,12 @@ namespace tskr
             // Do the opposite for before_ts
             impl::for_each_in_tuple(before_ts{}, [&](auto before_t) {
                 impl::for_each_in_tuple(tasks_ts{}, [&](auto task_t) {
-                    TaskNode* task = map[typeid(task_t).accessor()];
+                    std::shared_ptr<TaskNode> task = map[typeid(task_t).accessor()];
 
                     if (!map.contains(typeid(before_t).accessor()))
                         map.emplace(typeid(before_t).accessor(), TaskNode::make_from_taskfn(before_t));
 
-                    TaskNode* before = map[typeid(before_t).accessor()];
+                    std::shared_ptr<TaskNode> before = map[typeid(before_t).accessor()];
 
                     task->dependents.push_back(before);
                     before->deps_remaining.fetch_add(1, std::memory_order_relaxed);

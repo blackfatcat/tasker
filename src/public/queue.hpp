@@ -15,7 +15,7 @@ namespace tskr
     {
     private:
         size_t m_Cap; 
-        std::vector<std::unique_ptr<std::atomic<T*>>> m_TaskBuf;
+        std::vector<std::unique_ptr<std::atomic<std::shared_ptr<T>>>> m_TaskBuf;
         std::atomic<size_t> m_Top;
         std::atomic<size_t> m_Bottom;
     public:
@@ -39,7 +39,7 @@ namespace tskr
         /// @brief
         /// Pushes a task to the back of the queue, doubling its size if no space is left
         /// @param task Task to be pushed
-        void push(T* task)
+        void push(std::shared_ptr<T> task)
         {
             size_t bottom = m_Bottom.load(std::memory_order_relaxed);
             size_t top = m_Top.load(std::memory_order_relaxed);
@@ -59,7 +59,7 @@ namespace tskr
         /// Tries to push a task to the back of the queue, without increasing the size if no space is left
         /// @param task Task to be pushed
         /// @return `true` if task was successfully pushed, `false` otherwise
-        bool try_push(T* task)
+        bool try_push(std::shared_ptr<T> task)
         {
             size_t bottom = m_Bottom.load(std::memory_order_relaxed);
             size_t top = m_Top.load(std::memory_order_relaxed);
@@ -78,7 +78,7 @@ namespace tskr
         /// Tries to retrieve a task from the front of the queue
         /// @param task Reference to a task that will be filled up, if the operation succeeds
         /// @return `true` if task was successfully retrieved, `false` otherwise
-        bool try_pop(T* task)
+        bool try_pop(std::shared_ptr<T> task)
         {
             size_t bottom = m_Bottom.load(std::memory_order_relaxed);
             size_t top = m_Top.load(std::memory_order_relaxed);
@@ -90,7 +90,7 @@ namespace tskr
             --bottom;
             m_Bottom.store(bottom); // Ceq_cst enforeces total order with thieves's load
 
-            T* t = m_TaskBuf[bottom & (m_Cap - 1)]->load(std::memory_order_relaxed);
+            std::shared_ptr<T> t = m_TaskBuf[bottom & (m_Cap - 1)]->load(std::memory_order_relaxed);
 
             top = m_Top.load(); // Ceq_cst enforeces total order with thieves's CAS
 
@@ -124,7 +124,7 @@ namespace tskr
         /// Tries to retrieve a task from the front of the queue
         /// @param task Reference to a task that will be filled up, if the operation succeeds
         /// @return `true` if task was successfully retrieved, `false` otherwise
-        bool try_steal(T* task)
+        bool try_steal(std::shared_ptr<T> task)
         {
             size_t top = m_Top.load(std::memory_order_relaxed);
             size_t bottom = m_Bottom.load(); // Ceq_cst enforces total order with the thread stolen from
@@ -133,7 +133,7 @@ namespace tskr
             if (bottom - top <= 0)
                 return false;
 
-            T* t = m_TaskBuf[top & (m_Cap - 1)]->load(std::memory_order_relaxed);
+            std::shared_ptr<T> t = m_TaskBuf[top & (m_Cap - 1)]->load(std::memory_order_relaxed);
 
             // Make sure it was not consumed in the mean time
             if (m_Top.compare_exchange_strong(top, top + 1, std::memory_order_seq_cst, std::memory_order_relaxed))

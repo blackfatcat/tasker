@@ -38,7 +38,7 @@ namespace tskr
         stop();
     }
 
-    void WorkerPool::enqueue(TaskNode* task)
+    void WorkerPool::enqueue(std::shared_ptr<TaskNode> task)
     {
         int id = s_WorkerId;
 
@@ -126,7 +126,7 @@ namespace tskr
         // HOT PATH! Ordering is not that important when shutting down...
         while (!m_Shutdown.load(std::memory_order_relaxed))
         {
-            TaskNode* task_node = nullptr;
+            std::shared_ptr<TaskNode> task_node = nullptr;
 
             // Local queue empty?
             if (!local_queue->try_pop(task_node))
