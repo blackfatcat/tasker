@@ -8,7 +8,9 @@
 
 namespace tskr
 {
+    // !! USED FOR DEBUG TO EASILY SWAP BETWEEN HASHES AND STRINGS AS KEYS IN THE TASK TYPE MAP
     using KEY_TYPE = const char*;
+    #define accessor name
 
     namespace impl
     {
@@ -201,7 +203,7 @@ namespace tskr
             std::unordered_map<KEY_TYPE, TaskNode*> map;
 
             impl::for_each_in_tuple(tasks, [&](auto task) {
-                map.emplace(typeid(task).name(), TaskNode::make_from_taskfn(task));
+                map.emplace(typeid(task).accessor(), TaskNode::make_from_taskfn(task));
             });
 
             return map;
@@ -224,8 +226,8 @@ namespace tskr
             // increase dependency count for task
             impl::for_each_in_tuple(after_ts{}, [&](auto after_t) {
                 impl::for_each_in_tuple(tasks_ts{}, [&](auto task_t) {
-                    TaskNode* after = map[typeid(after_t).name()];
-                    TaskNode* task = map[typeid(task_t).name()];
+                    TaskNode* after = map[typeid(after_t).accessor()];
+                    TaskNode* task = map[typeid(task_t).accessor()];
 
                     after->dependents.push_back(task);
                     task->deps_remaining.fetch_add(1, std::memory_order_relaxed);
@@ -235,8 +237,8 @@ namespace tskr
             // Do the opposite for before_ts
             impl::for_each_in_tuple(before_ts{}, [&](auto before_t) {
                 impl::for_each_in_tuple(tasks_ts{}, [&](auto task_t) {
-                    TaskNode* before = map[typeid(before_t).name()];
-                    TaskNode* task = map[typeid(task_t).name()];
+                    TaskNode* before = map[typeid(before_t).accessor()];
+                    TaskNode* task = map[typeid(task_t).accessor()];
 
                     task->dependents.push_back(before);
                     before->deps_remaining.fetch_add(1, std::memory_order_relaxed);
