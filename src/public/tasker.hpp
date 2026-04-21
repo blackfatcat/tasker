@@ -10,34 +10,36 @@
 
 namespace tskr
 {
+    enum class ExecutionPolicy : uint8_t
+    {
+        Single,
+        Repeat
+    };
+
     class Tasker
     {
     private:
-        std::vector<std::size_t> m_ScheduleHashes;
-        std::vector<std::size_t> m_ParallelScheduleHashes;
-
-        std::unordered_map<std::size_t, std::vector<TaskNode*>> m_TasksPerSchedule;
-
+        std::vector<std::vector<size_t>> m_ScheduleHashes;
+        std::unordered_map<size_t, std::pair<ExecutionPolicy, std::vector<TaskNode*>>> m_TasksPerSchedule;
         WorkerPool workers;
     public:
-        Tasker(/* args */);
+        Tasker();
         ~Tasker();
-        // TODO: introduce an execution policy (single, repeated - to simulate a game loop, etc.) 
-        /// @brief 
+
+        /// @brief
         /// @tparam ...Schedules a pack of unique types that will be registered as schedules. 
         /// @note The order the schedules are typed in will be the order they will be executed in as well,
         /// unless preceeded with Parallel<> in which case the schedules inside it will all be ran together
         /// @return reference to self for chaining
         template<typename ...Schedules>
-        Tasker& add_schedules() 
+        Tasker& add_schedules(ExecutionPolicy policy) 
         {
             m_ScheduleHashes.reserve(sizeof...(Schedules));
-            m_ParallelScheduleHashes.reserve(sizeof...(Schedules));
             m_TasksPerSchedule.reserve(sizeof...(Schedules));
 
             // Gets the hash of each schedule and inserts it into the vector through fold magic
             // Unfolds any nested declaration like Parallel<>
-            (process_schedule_types<Schedules>(), ...);
+            (process_schedule_types<Schedules>(policy), ...);
 
             return *this;
         }
@@ -61,7 +63,7 @@ namespace tskr
             std::unordered_map<KEY_TYPE, TaskNode*> map = TaskNode::build_node_map(tasks_ts{});
             TaskNode::wire_dependencies(tasks, map);
 
-            std::vector<TaskNode*>& task_nodes = m_TasksPerSchedule.at(schedule_id);
+            std::vector<TaskNode*>& task_nodes = m_TasksPerSchedule.at(schedule_id).second;
 
             for (auto& [key, node] : map)
             {
@@ -88,24 +90,25 @@ namespace tskr
 
     private:
         template <typename T>
-        void process_schedule_types()
+        void process_schedule_types(ExecutionPolicy policy)
         {
+            std::vector<size_t> par_schedules{};
             // TODO: Run these in parallel
             if constexpr (impl::is_parallel<T>::value)
             {
                 // T is Parallel<A,B,C>
-                std::apply([this](auto... inner){
-                    (m_ScheduleHashes.push_back(typeid(inner).hash_code()), ...);
-                    (m_ParallelScheduleHashes.push_back(typeid(inner).hash_code()), ...);
-                    (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::vector<TaskNode*>{}), ...);
+                std::apply([this, &par_schedules, policy](auto... inner){
+                    (par_schedules.push_back(typeid(inner).hash_code()), ...);
+                    (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::make_pair(policy, std::vector<TaskNode*>{})), ...);
                 }, typename impl::parallel_inner<T>::types{});
             }
             else
             {
                 // T is a single schedule
-                m_ScheduleHashes.push_back(typeid(T).hash_code());
-                m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::vector<TaskNode*>{});
+                par_schedules.push_back(typeid(T).hash_code());
+                m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::make_pair(policy, std::vector<TaskNode*>{}));
             }
+            m_ScheduleHashes.push_back(par_schedules);
         }
     };    
 } // namespace tskr
