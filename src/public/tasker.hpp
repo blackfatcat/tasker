@@ -16,7 +16,7 @@ namespace tskr
         std::vector<std::size_t> m_ScheduleHashes;
         std::vector<std::size_t> m_ParallelScheduleHashes;
 
-        std::unordered_map<std::size_t, Task> m_TasksPerSchedule;
+        std::unordered_map<std::size_t, std::vector<TaskNode*>> m_TasksPerSchedule;
 
         WorkerPool workers;
     public:
@@ -33,6 +33,7 @@ namespace tskr
         {
             m_ScheduleHashes.reserve(sizeof...(Schedules));
             m_ParallelScheduleHashes.reserve(sizeof...(Schedules));
+            m_TasksPerSchedule.reserve(sizeof...(Schedules));
 
             // Gets the hash of each schedule and inserts it into the vector through fold magic
             // Unfolds any nested declaration like Parallel<>
@@ -48,21 +49,32 @@ namespace tskr
         /// See (TODO: insert git link) for examples
         /// @return reference to self for chaining
         template<typename Schedule, typename ...Tasks>
-        Tasker& add_tasks(TaskConfig<Tasks...> tasks) {
+        Tasker& add_tasks(TaskConfig<Tasks...> tasks)
+        {
+            size_t schedule_id = typeid(Schedule).hash_code();
+            assert(m_TasksPerSchedule.contains(schedule_id) && "Schedule deos not exist. Add it first with add_schedules.");
 
             using tasks_ts = typename TaskConfig<Tasks...>::tasks_t;
             using after_ts = typename TaskConfig<Tasks...>::after_t;
             using before_ts = typename TaskConfig<Tasks...>::before_t;
 
             std::unordered_map<KEY_TYPE, TaskNode*> map = TaskNode::build_node_map(tasks_ts{});
+            TaskNode::wire_dependencies(tasks, map);
+
+            std::vector<TaskNode*>& task_nodes = m_TasksPerSchedule.at(schedule_id);
+
+            for (auto& [key, node] : map)
+            {
+                task_nodes.push_back(node);
+            }
+
             return *this;
         }
 
         template<typename Schedule, typename ...Tasks>
         Tasker& add_tasks(Tasks... tasks)
         {
-            //auto cfg = TaskConfig<std::tuple<Tasks...>, std::tuple<>, std::tuple<>>{};
-            //add_tasks<Schedule>();
+            add_tasks<Schedule>(TaskConfigBase<Tasks...>{});
             return *this;
         }
 
@@ -85,12 +97,14 @@ namespace tskr
                 std::apply([this](auto... inner){
                     (m_ScheduleHashes.push_back(typeid(inner).hash_code()), ...);
                     (m_ParallelScheduleHashes.push_back(typeid(inner).hash_code()), ...);
+                    (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::vector<TaskNode*>{}), ...);
                 }, typename impl::parallel_inner<T>::types{});
             }
             else
             {
                 // T is a single schedule
                 m_ScheduleHashes.push_back(typeid(T).hash_code());
+                m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::vector<TaskNode*>{});
             }
         }
     };    

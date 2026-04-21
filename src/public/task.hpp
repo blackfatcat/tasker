@@ -210,7 +210,7 @@ namespace tskr
         }
 
         template<typename... Ts>
-        void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, TaskNode*>& map)
+        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, TaskNode*>& map)
         {
             using tasks_ts = typename TaskConfig<Ts...>::tasks_t;
             using after_ts = typename TaskConfig<Ts...>::after_t;
@@ -226,8 +226,12 @@ namespace tskr
             // increase dependency count for task
             impl::for_each_in_tuple(after_ts{}, [&](auto after_t) {
                 impl::for_each_in_tuple(tasks_ts{}, [&](auto task_t) {
-                    TaskNode* after = map[typeid(after_t).accessor()];
                     TaskNode* task = map[typeid(task_t).accessor()];
+
+                    if (!map.contains(typeid(after_t).accessor()))
+                        map.emplace(typeid(after_t).accessor(), TaskNode::make_from_taskfn(after_t));
+
+                    TaskNode* after = map[typeid(after_t).accessor()];
 
                     after->dependents.push_back(task);
                     task->deps_remaining.fetch_add(1, std::memory_order_relaxed);
@@ -237,8 +241,12 @@ namespace tskr
             // Do the opposite for before_ts
             impl::for_each_in_tuple(before_ts{}, [&](auto before_t) {
                 impl::for_each_in_tuple(tasks_ts{}, [&](auto task_t) {
-                    TaskNode* before = map[typeid(before_t).accessor()];
                     TaskNode* task = map[typeid(task_t).accessor()];
+
+                    if (!map.contains(typeid(before_t).accessor()))
+                        map.emplace(typeid(before_t).accessor(), TaskNode::make_from_taskfn(before_t));
+
+                    TaskNode* before = map[typeid(before_t).accessor()];
 
                     task->dependents.push_back(before);
                     before->deps_remaining.fetch_add(1, std::memory_order_relaxed);
