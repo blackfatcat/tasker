@@ -48,6 +48,9 @@ namespace tskr
         /// @brief Stop the worker loops and join all worker threads
         void stop();
 
+        /// @brief Atomically set the number of tasks remaining
+        void set_task_count(size_t new_count);
+
     private:
         void worker_loop(int worker_id);
     };
