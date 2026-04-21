@@ -25,6 +25,10 @@ namespace tskr
             m_Bottom(0)
         {
             m_TaskBuf.reserve(m_Cap);
+            for (size_t i = 0; i < m_Cap; i++)
+            {
+                m_TaskBuf.push_back(std::make_unique<std::atomic<std::shared_ptr<T>>>());
+            }
         }
         ~WorkStealingDeque()
         {
@@ -48,7 +52,7 @@ namespace tskr
             if (bottom - top >= m_Cap)
             {
                 m_Cap *= 2;
-                m_TaskBuf.reserve(m_Cap);
+                m_TaskBuf.resize(m_Cap);
             }
 
             m_TaskBuf[bottom & (m_Cap - 1)]->store(task, std::memory_order_relaxed);
@@ -80,44 +84,33 @@ namespace tskr
         /// @return `true` if task was successfully retrieved, `false` otherwise
         bool try_pop(std::shared_ptr<T> task)
         {
-            size_t bottom = m_Bottom.load(std::memory_order_relaxed);
-            size_t top = m_Top.load(std::memory_order_relaxed);
+            size_t bottom = m_Bottom.load(std::memory_order_relaxed) - 1;
 
-            // Nothing left
-            if (bottom == top)
-                return false;
-
-            --bottom;
             m_Bottom.store(bottom); // Ceq_cst enforeces total order with thieves's load
 
-            std::shared_ptr<T> t = m_TaskBuf[bottom & (m_Cap - 1)]->load(std::memory_order_relaxed);
+            size_t top = m_Top.load(); // Ceq_cst enforeces total order with thieves's CAS
 
-            top = m_Top.load(); // Ceq_cst enforeces total order with thieves's CAS
-
-            if (bottom > top)
+            // Has anaything?
+            if (top <= bottom)
             {
-                task = t;
+                // Last element?
+                if (top == bottom)
+                {
+                    if (!m_Top.compare_exchange_strong(top, top + 1, std::memory_order_relaxed))
+                    {
+                        m_Bottom.store(bottom + 1, std::memory_order_relaxed);
+                        return false;
+                    }
+                    m_Bottom.store(bottom + 1, std::memory_order_relaxed);
+                }
+                task = m_TaskBuf[bottom & (m_Cap - 1)]->load(std::memory_order_relaxed);
                 return true;
             }
-
-            // Last task?
-            if (bottom == top)
+            else
             {
-                // Make sure noone has stolen it and cannot steal it
-                if (m_Top.compare_exchange_strong(top, top + 1, std::memory_order_relaxed))
-                {
-                    m_Bottom.store(top + 1, std::memory_order_relaxed);
-                    task = t;
-                    return true;
-                }
-
-                m_Bottom.store(top, std::memory_order_relaxed);
+                m_Bottom.store(bottom + 1, std::memory_order_relaxed);
                 return false;
             }
-
-            assert(bottom == top - 1);
-            m_Bottom.store(top, std::memory_order_relaxed);
-            return false;
         }
 
         /// @brief
