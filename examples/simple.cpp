@@ -18,7 +18,6 @@ void task3()
     {
         total += i;
     }
-    std::cout << "Total: " << total << std::endl;
 }
 
 
@@ -30,7 +29,6 @@ void task2()
     {
         total += i;
     }
-    std::cout << "Total: " << total << std::endl;
 }
 
 void task1()
@@ -41,7 +39,6 @@ void task1()
     {
         total += i;
     }
-    std::cout << "Total: " << total << std::endl;
 }
 
 int main() 
@@ -50,7 +47,10 @@ int main()
 
     tskr::Tasker tasker;
 
-    tasker.add_schedules<Startup, Parallel<Main, Render>, Shutdown>();
+    tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single);
+    tasker.add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat);
+    tasker.add_schedules<Shutdown>(tskr::ExecutionPolicy::Single);
+
     tasker.add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}));
 
     tasker.add_tasks<Main>(tskr::TaskFn<task2>{}.after(tskr::TaskFn<task1>{}));
