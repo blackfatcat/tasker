@@ -173,7 +173,7 @@ namespace tskr
         auto before(BeforeTs...) const
         {
             return TaskConfig<
-                std::tuple<decltype(Fn)>,
+                std::tuple<TaskFn<Fn>>,
                 std::tuple<>,
                 std::tuple<BeforeTs...>>{};
         }
