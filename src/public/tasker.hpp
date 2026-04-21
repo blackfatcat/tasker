@@ -20,7 +20,7 @@ namespace tskr
     {
     private:
         std::vector<std::vector<size_t>> m_ScheduleHashes;
-        std::unordered_map<size_t, std::pair<ExecutionPolicy, std::vector<TaskNode*>>> m_TasksPerSchedule;
+        std::unordered_map<size_t, std::pair<ExecutionPolicy, std::vector<std::shared_ptr<TaskNode>>>> m_TasksPerSchedule;
         WorkerPool workers;
     public:
         Tasker();
@@ -60,10 +60,10 @@ namespace tskr
             using after_ts = typename TaskConfig<Tasks...>::after_t;
             using before_ts = typename TaskConfig<Tasks...>::before_t;
 
-            std::unordered_map<KEY_TYPE, TaskNode*> map = TaskNode::build_node_map(tasks_ts{});
+            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks_ts{});
             TaskNode::wire_dependencies(tasks, map);
 
-            std::vector<TaskNode*>& task_nodes = m_TasksPerSchedule.at(schedule_id).second;
+            std::vector<std::shared_ptr<TaskNode>>& task_nodes = m_TasksPerSchedule.at(schedule_id).second;
 
             for (auto& [key, node] : map)
             {
@@ -99,14 +99,14 @@ namespace tskr
                 // T is Parallel<A,B,C>
                 std::apply([this, &par_schedules, policy](auto... inner){
                     (par_schedules.push_back(typeid(inner).hash_code()), ...);
-                    (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::make_pair(policy, std::vector<TaskNode*>{})), ...);
+                    (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::make_pair(policy, std::vector<std::shared_ptr<TaskNode>>{})), ...);
                 }, typename impl::parallel_inner<T>::types{});
             }
             else
             {
                 // T is a single schedule
                 par_schedules.push_back(typeid(T).hash_code());
-                m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::make_pair(policy, std::vector<TaskNode*>{}));
+                m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::make_pair(policy, std::vector<std::shared_ptr<TaskNode>>{}));
             }
             m_ScheduleHashes.push_back(par_schedules);
         }

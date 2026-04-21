@@ -17,7 +17,7 @@ namespace tskr
         std::vector<std::thread> m_Workers;
 
         std::vector<std::unique_ptr<WorkStealingDeque<TaskNode>>> m_LocalQueues;
-        rigtorp::MPMCQueue<TaskNode*> m_GlobalQueue;
+        rigtorp::MPMCQueue<std::shared_ptr<TaskNode>> m_GlobalQueue;
 
         size_t m_WorkerCap;
         static thread_local int s_WorkerId;
@@ -33,7 +33,7 @@ namespace tskr
         /// @brief Add a task to be executed
         /// @brief Note: if a worker thread adds it, will be added directly to its own worker queue <br>
         /// @brief Note: if a non-worker thread adds it (the main thread), will be added to the global queue for any* thread to grab
-        void enqueue(TaskNode* task);
+        void enqueue(std::shared_ptr<TaskNode> task);
 
         /// @brief Start the worker loops
         void work();
