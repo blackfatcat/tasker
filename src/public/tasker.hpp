@@ -21,7 +21,9 @@ namespace tskr
     private:
         std::vector<std::vector<size_t>> m_ScheduleHashes;
         std::unordered_map<size_t, std::pair<ExecutionPolicy, std::vector<std::shared_ptr<TaskNode>>>> m_TasksPerSchedule;
-        WorkerPool workers;
+        WorkerPool m_Workers;
+
+        std::atomic_bool m_Running{ true };
     public:
         Tasker();
         ~Tasker();
