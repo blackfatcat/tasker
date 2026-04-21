@@ -5,6 +5,7 @@
 #include <thread>
 #include <cstdint>
 
+#include "task.hpp"
 #include "queue.hpp"
 #include "mpmc_queue.hpp"
 
@@ -15,8 +16,8 @@ namespace tskr
     private:
         std::vector<std::thread> m_Workers;
 
-        std::vector<std::unique_ptr<WorkStealingDeque>> m_LocalQueues;
-        rigtorp::MPMCQueue<Task*> m_GlobalQueue;
+        std::vector<std::unique_ptr<WorkStealingDeque<TaskNode>>> m_LocalQueues;
+        rigtorp::MPMCQueue<TaskNode*> m_GlobalQueue;
 
         size_t m_WorkerCap;
         static thread_local int s_WorkerId;
@@ -32,7 +33,7 @@ namespace tskr
         /// @brief Add a task to be executed
         /// @brief Note: if a worker thread adds it, will be added directly to its own worker queue <br>
         /// @brief Note: if a non-worker thread adds it (the main thread), will be added to the global queue for any* thread to grab
-        void enqueue(Task* task);
+        void enqueue(TaskNode* task);
 
         /// @brief Start the worker loops
         void work();

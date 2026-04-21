@@ -29,7 +29,7 @@ namespace tskr
         for (uint8_t worker_id = 0; worker_id < m_ThreadCount; worker_id++)
         {
             // Create worker queues
-            m_LocalQueues.emplace_back(std::make_unique<WorkStealingDeque>(m_WorkerCap));
+            m_LocalQueues.emplace_back(std::make_unique<WorkStealingDeque<TaskNode>>(m_WorkerCap));
         }
     }
     
@@ -38,7 +38,7 @@ namespace tskr
         stop();
     }
 
-    void WorkerPool::enqueue(Task* task)
+    void WorkerPool::enqueue(TaskNode* task)
     {
         int id = s_WorkerId;
 
@@ -126,31 +126,31 @@ namespace tskr
         // HOT PATH! Ordering is not that important when shutting down...
         while (!m_Shutdown.load(std::memory_order_relaxed))
         {
-            Task* task = nullptr;
+            TaskNode* task_node = nullptr;
 
             // Local queue empty?
-            if (!local_queue->try_pop(task))
+            if (!local_queue->try_pop(task_node))
             {
                 // Try stealing from other workers
-                for (size_t i = 0; i < m_ThreadCount && !task; i++)
+                for (size_t i = 0; i < m_ThreadCount && !task_node; i++)
                 {
                     if (i == worker_id) continue;
-                    m_LocalQueues[i]->try_steal(task);
+                    m_LocalQueues[i]->try_steal(task_node);
                 }
             }
 
             // Still no task? 
-            if (!task)
-                m_GlobalQueue.try_pop(task);
+            if (!task_node)
+                m_GlobalQueue.try_pop(task_node);
 
-            if (!task)
+            if (!task_node)
             {
                 // No work to do...
                 std::this_thread::yield();
                 continue;
             }
 
-            task->fun(task->payload);
+            task_node->task->fun(task_node->task->payload);
 
             m_TasksRemaining.fetch_sub(1, std::memory_order_release);
             
