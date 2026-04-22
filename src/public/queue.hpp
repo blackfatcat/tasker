@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cassert>
 #include <atomic>
 #include <vector>
 #include <memory>
