@@ -7,6 +7,7 @@
 #include "scheduler.hpp"
 #include "types.hpp"
 #include "worker_pool.hpp"
+#include "resource.hpp"
 
 namespace tskr
 {
@@ -22,6 +23,8 @@ namespace tskr
         std::vector<std::vector<size_t>> m_ScheduleHashes;
         std::unordered_map<size_t, std::pair<ExecutionPolicy, std::vector<std::shared_ptr<TaskNode>>>> m_TasksPerSchedule;
         WorkerPool m_Workers;
+
+        ResourceStore m_Resources{};
 
         std::atomic_bool m_Running{ true };
     public:
@@ -62,8 +65,8 @@ namespace tskr
             using after_ts = typename TaskConfig<Tasks...>::after_t;
             using before_ts = typename TaskConfig<Tasks...>::before_t;
 
-            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks_ts{});
-            TaskNode::wire_dependencies(tasks, map);
+            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks_ts{}, m_Resources);
+            TaskNode::wire_dependencies(tasks, map, m_Resources);
 
             std::vector<std::shared_ptr<TaskNode>>& task_nodes = m_TasksPerSchedule.at(schedule_id).second;
 
@@ -79,6 +82,13 @@ namespace tskr
         Tasker& add_tasks(Tasks... tasks)
         {
             add_tasks<Schedule>(TaskConfigBase<Tasks...>{});
+            return *this;
+        }
+
+        template<typename T>
+        Tasker& register_resource(T&& resource)
+        {
+            m_Resources.insert(std::move(resource));
             return *this;
         }
 

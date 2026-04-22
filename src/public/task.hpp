@@ -6,6 +6,8 @@
 #include <tuple>
 #include <memory>
 
+#include "resource.hpp"
+
 namespace tskr
 {
     // !! USED FOR DEBUG TO EASILY SWAP BETWEEN HASHES AND STRINGS AS KEYS IN THE TASK TYPE MAP
@@ -127,22 +129,17 @@ namespace tskr
         std::tuple<>
     >;
 
-    /// @brief
-    /// The bridge between type-space and run-time Tasks
-    template<typename Fn>
-    struct TaskInvoker;
+    /// @brief Helper wrapper around Resource types,
+    /// used to unpack and inject resources from the resource map into tasks
+    template<typename Param>
+    struct ParamFetcher;
 
-    // no args
-    // TODO: Store a tuple in data and unpack?
-    template<typename R>
-    struct TaskInvoker<R(*)()>
+    template<typename T>
+    struct ParamFetcher<Resource<T>>
     {
-        using Fun = R(*)();
-
-        static void invoke(void* payload)
+        static Resource<T> fetch(ResourceStore& store)
         {
-            auto fun = reinterpret_cast<Fun>(payload);
-            (*fun)();
+            return store.get<T>();
         }
     };
 
@@ -158,11 +155,25 @@ namespace tskr
         using args = typename task_traits::args;
         using return_type = typename task_traits::return_type;
 
-        static std::unique_ptr<Task> make_task()
+        static void run(ResourceStore& store)
+        {
+            if constexpr (std::tuple_size_v<args> <= 0)
+                Fn();
+
+            // Call Fn injecting resources from the ResourceStore
+            std::apply([&store](auto... param_types) {
+                Fn(ParamFetcher<decltype(param_types)>::fetch(store)...);
+            }, args{});
+        }
+
+        static std::unique_ptr<Task> make_task(ResourceStore& store)
         {
             auto t = std::make_unique<Task>();
-            t->fun = &TaskInvoker<fun_type>::invoke;
-            t->payload = reinterpret_cast<void*>(Fn);
+            t->fun = [](void* data) {
+                ResourceStore* store = static_cast<ResourceStore*>(data);
+                TaskFn<Fn>::run(*store);
+            };
+            t->payload = &store;
             t->spawn_type = TaskType;
             return t;
         }
@@ -199,28 +210,28 @@ namespace tskr
         std::atomic<int> deps_remaining;                   // incoming edges
 
         template<typename TaskFnT>
-        static std::shared_ptr<TaskNode> make_from_taskfn(TaskFnT task)
+        static std::shared_ptr<TaskNode> make_from_taskfn(TaskFnT task, ResourceStore& store)
         {
             auto node = std::make_shared<TaskNode>();
-            node->task = task.make_task();
+            node->task = task.make_task(store);
             node->deps_remaining.store(0, std::memory_order_relaxed);
             return node;
         }
 
         template<typename... Ts>
-        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(std::tuple<Ts...> tasks)
+        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(std::tuple<Ts...> tasks, ResourceStore& store)
         {
             std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map;
 
             impl::for_each_in_tuple(tasks, [&](auto task) {
-                map.emplace(typeid(task).accessor(), TaskNode::make_from_taskfn(task));
+                map.emplace(typeid(task).accessor(), TaskNode::make_from_taskfn(task, store));
             });
 
             return map;
         }
 
         template<typename... Ts>
-        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>>& map)
+        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>>& map, ResourceStore& store)
         {
             using tasks_ts = typename TaskConfig<Ts...>::tasks_t;
             using after_ts = typename TaskConfig<Ts...>::after_t;
@@ -239,7 +250,7 @@ namespace tskr
                     std::shared_ptr<TaskNode> task = map[typeid(task_t).accessor()];
 
                     if (!map.contains(typeid(after_t).accessor()))
-                        map.emplace(typeid(after_t).accessor(), TaskNode::make_from_taskfn(after_t));
+                        map.emplace(typeid(after_t).accessor(), TaskNode::make_from_taskfn(after_t, store));
 
                     std::shared_ptr<TaskNode> after = map[typeid(after_t).accessor()];
 
@@ -254,7 +265,7 @@ namespace tskr
                     std::shared_ptr<TaskNode> task = map[typeid(task_t).accessor()];
 
                     if (!map.contains(typeid(before_t).accessor()))
-                        map.emplace(typeid(before_t).accessor(), TaskNode::make_from_taskfn(before_t));
+                        map.emplace(typeid(before_t).accessor(), TaskNode::make_from_taskfn(before_t, store));
 
                     std::shared_ptr<TaskNode> before = map[typeid(before_t).accessor()];
 
