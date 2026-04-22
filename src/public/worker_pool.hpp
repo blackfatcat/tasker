@@ -27,7 +27,7 @@ namespace tskr
         uint8_t m_ThreadCount;
     public:
         // TODO: Add affinity mask
-        WorkerPool(uint8_t thread_count = std::thread::hardware_concurrency(), size_t per_worker_cap = 1024);
+        WorkerPool(uint8_t thread_count = std::thread::hardware_concurrency(), size_t per_worker_cap = 256);
         ~WorkerPool();
 
         /// @brief Add a task to be executed
@@ -48,8 +48,8 @@ namespace tskr
         /// @brief Stop the worker loops and join all worker threads
         void stop();
 
-        /// @brief Atomically set the number of tasks remaining
-        void set_task_count(size_t new_count);
+        /// @brief Atomically add to the number of tasks remaining
+        void add_task_count(size_t new_count);
 
     private:
         void worker_loop(int worker_id);

@@ -148,15 +148,16 @@ namespace tskr
                 continue;
             }
 
+            task_node->task->fun(task_node->task->payload);
+
             m_TasksRemaining.fetch_sub(1, std::memory_order_release);
 
-            task_node->task->fun(task_node->task->payload);
             for (auto& dependant : task_node->dependents)
                 enqueue(dependant);
         }
     }
 
-    void WorkerPool::set_task_count(size_t new_count)
+    void WorkerPool::add_task_count(size_t new_count)
     {
         m_TasksRemaining.fetch_add(new_count, std::memory_order_release);
     }
