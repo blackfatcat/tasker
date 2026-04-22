@@ -95,10 +95,15 @@ void task6()
     done6.store(true, std::memory_order_release);
 }
 
-void task7()
+void task7(
+    tskr::Resource<tskr::Repeating<Main>> main_schedule_repeating
+)
 {
     assert(done3.load(std::memory_order_acquire) && done4.load(std::memory_order_acquire));
     assert(done5.load(std::memory_order_acquire) && done6.load(std::memory_order_acquire));
+
+    // Stops Main and Render from repeating, terminating the program
+    main_schedule_repeating->stop();
 
     const std::vector<int>& in{ 1,2,3,4,5,6 };
     int total = 0;
@@ -112,7 +117,9 @@ int main()
 {
     tskr::Tasker tasker;
 
-    tasker.add_schedules<Startup, Parallel<Main, Render>, Shutdown>(tskr::ExecutionPolicy::Single)
+    tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
+        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat)
+        .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single)
         .add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}))
         .add_tasks<Main>(tskr::TaskFn<task4>{}.after(tskr::TaskFn<task3>{}))
         .add_tasks<Render>(tskr::TaskFn<task6>{}.after(tskr::TaskFn<task5>{}))
