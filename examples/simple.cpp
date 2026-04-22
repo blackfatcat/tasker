@@ -107,7 +107,7 @@ int main()
 {
     tskr::Tasker tasker;
 
-    tasker.add_schedules<Startup, Parallel<Main, Render>, Shutdown>(tskr::ExecutionPolicy::Single);
+    tasker.add_schedules<Startup, Parallel<Main, Render>, Shutdown>(tskr::ExecutionPolicy::Repeat);
 
     tasker.add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}));
 
