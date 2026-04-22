@@ -157,7 +157,7 @@ namespace tskr
                 m_TasksRemaining.fetch_sub(1, std::memory_order_release);
 
             for (auto& dependant : task_node->dependents)
-                enqueue(dependant);
+                enqueue(dependant, false);
         }
     }
 
