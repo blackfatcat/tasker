@@ -38,9 +38,12 @@ namespace tskr
         stop();
     }
 
-    void WorkerPool::enqueue(std::shared_ptr<TaskNode> task)
+    void WorkerPool::enqueue(std::shared_ptr<TaskNode> task, bool increase_task_counter)
     {
         int id = s_WorkerId;
+
+        if (task->task->spawn_type == Task::SpawnType::Scheduled && increase_task_counter)
+            add_task_count(1);
 
         if (id >= 0 && id < m_ThreadCount)
         {
@@ -150,7 +153,8 @@ namespace tskr
 
             task_node->task->fun(task_node->task->payload);
 
-            m_TasksRemaining.fetch_sub(1, std::memory_order_release);
+            if(task_node->task->spawn_type != Task::SpawnType::Standalone)
+                m_TasksRemaining.fetch_sub(1, std::memory_order_release);
 
             for (auto& dependant : task_node->dependents)
                 enqueue(dependant);
