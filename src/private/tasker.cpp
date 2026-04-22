@@ -30,9 +30,11 @@ namespace tskr
                     std::pair<ExecutionPolicy, std::vector<std::shared_ptr<TaskNode>>>& tasks = m_TasksPerSchedule[schedule];
                     if (tasks.first == ExecutionPolicy::Repeat || first_run)
                     {
-                        if (tasks.first == ExecutionPolicy::Repeat) repeating = true;
+                        repeating = true;
 
-                        m_Workers.set_task_count(tasks.second.size());
+                        // Tasks are running already, so this atomic add will prevent the scenario where a task is executed,
+                        // decreasing the counter to 0 and falsly signalling that there are no more left when the rest have just not been enqueued
+                        m_Workers.add_task_count(tasks.second.size());
                         for (auto& task : tasks.second)
                         {
                             if (task->deps_remaining.load(std::memory_order_acquire) <= 0)
