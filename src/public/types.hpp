@@ -5,7 +5,7 @@
 
 namespace tskr
 {
-    /// @brief
+    /// @brief Define schedules to be executed in parallel
     /// @tparam Ts a pack of types that will mark schedules for parallel execution
     template<typename... Ts>
     struct Parallel {};
