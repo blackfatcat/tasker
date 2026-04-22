@@ -33,7 +33,8 @@ namespace tskr
         /// @brief Add a task to be executed
         /// @brief Note: if a worker thread adds it, will be added directly to its own worker queue <br>
         /// @brief Note: if a non-worker thread adds it (the main thread), will be added to the global queue for any* thread to grab
-        void enqueue(std::shared_ptr<TaskNode> task);
+        /// @param tracked Should the task counter be increased when adding this task
+        void enqueue(std::shared_ptr<TaskNode> task, bool increase_task_counter = true);
 
         /// @brief Start the worker loops
         void work();

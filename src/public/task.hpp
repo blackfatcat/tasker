@@ -64,11 +64,18 @@ namespace tskr
     /// @brief The backbone of the system - a single point of execution tied to a function
     struct Task
     {
+        enum class SpawnType : uint8_t
+        {
+            Scheduled,  // Task will be added to the current schedule and waited on
+            Standalone, // Standalone task, will not be waited on
+        };
+
         using Fn = void(*)(void*);
 
         Fn fun;
         void* payload;
         std::atomic<int> deps{ 0 };
+        SpawnType spawn_type = SpawnType::Scheduled;
     };
 
     /// @brief 
@@ -141,7 +148,9 @@ namespace tskr
 
     /// @brief 
     /// A compile-time info carrier for either a free function, callable object or a member function.
-    template<auto Fn>
+    /// tparam Fn Funtion pointer to the function to be executed
+    /// tparam TaskType the spawn type of the task - Schedueld or Standalone
+    template<auto Fn, Task::SpawnType TaskType = Task::SpawnType::Scheduled>
     struct TaskFn
     {
         using task_traits = impl::function_traits<decltype(Fn)>;
@@ -154,6 +163,7 @@ namespace tskr
             auto t = std::make_unique<Task>();
             t->fun = &TaskInvoker<fun_type>::invoke;
             t->payload = reinterpret_cast<void*>(Fn);
+            t->spawn_type = TaskType;
             return t;
         }
 
@@ -163,7 +173,7 @@ namespace tskr
         auto after(AfterTs...) const
         {
             return TaskConfig<
-                std::tuple<TaskFn<Fn>>,
+                std::tuple<TaskFn<Fn, TaskType>>,
                 std::tuple<AfterTs...>,
                 std::tuple<>
             >{};
@@ -175,7 +185,7 @@ namespace tskr
         auto before(BeforeTs...) const
         {
             return TaskConfig<
-                std::tuple<TaskFn<Fn>>,
+                std::tuple<TaskFn<Fn, TaskType>>,
                 std::tuple<>,
                 std::tuple<BeforeTs...>>{};
         }

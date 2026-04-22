@@ -38,7 +38,7 @@ namespace tskr
                         for (auto& task : tasks.second)
                         {
                             if (task->deps_remaining.load(std::memory_order_acquire) <= 0)
-                                m_Workers.enqueue(task);
+                                m_Workers.enqueue(task, false);
                         }
                     }
                 }
