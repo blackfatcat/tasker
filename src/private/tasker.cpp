@@ -4,6 +4,7 @@ namespace tskr
 {
     Tasker::Tasker(/* args */)
     {
+        m_Resources.insert(Running{});
     }
 
     Tasker::~Tasker()
@@ -20,18 +21,17 @@ namespace tskr
         bool repeating = true;
 
         // Main loop
-        while (m_Running.load(std::memory_order_relaxed) && repeating)
+        while (m_Resources.get<Running>()->is_running() && repeating)
         {
             repeating = false;
             for (auto& schedule_set : m_ScheduleHashes)
             {
                 for (auto& schedule : schedule_set)
                 {
-                    std::pair<ExecutionPolicy, std::vector<std::shared_ptr<TaskNode>>>& tasks = m_TasksPerSchedule[schedule];
-                    if (tasks.first == ExecutionPolicy::Repeat || first_run)
+                    std::pair<ScheduleInfo, std::vector<std::shared_ptr<TaskNode>>>& tasks = m_TasksPerSchedule[schedule];
+                    repeating = tasks.first.repeating->load(std::memory_order_relaxed);
+                    if ((tasks.first.policy == ExecutionPolicy::Repeat && repeating) || first_run)
                     {
-                        repeating = true;
-
                         // Tasks are running already, so this atomic add will prevent the scenario where a task is executed,
                         // decreasing the counter to 0 and falsly signalling that there are no more left when the rest have just not been enqueued
                         m_Workers.add_task_count(tasks.second.size());
@@ -53,5 +53,19 @@ namespace tskr
         m_Running.store(false);
         m_Workers.wait_for_all();
         m_Workers.stop();
+    }
+
+    Running::Running()
+    {
+        m_Running = std::make_shared<std::atomic_bool>(true);
+    }
+
+    void Running::stop()
+    {
+        m_Running->store(false, std::memory_order_relaxed);
+    }
+    bool Running::is_running()
+    {
+        return m_Running->load(std::memory_order_relaxed);
     }
 }

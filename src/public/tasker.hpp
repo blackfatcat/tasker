@@ -11,17 +11,60 @@
 
 namespace tskr
 {
+
+    /// @brief Determines if the whole app is running
+    struct Running
+    {
+        Running();
+        void stop();
+        bool is_running();
+    private:
+        std::shared_ptr<std::atomic_bool> m_Running;
+    };
+
+    /// @brief Determines if a schedule should continue repeating
+    /// Can be used within a task to determine when the specified schedule should stop repeating
+    template<typename Schedule>
+    struct Repeating
+    {
+        Repeating(std::shared_ptr<std::atomic_bool> repeating) : m_Repeating(repeating)
+        {
+        }
+        void stop()
+        {
+            m_Repeating->store(false, std::memory_order_relaxed);
+        }
+        bool is_repeating()
+        {
+            return m_Repeating->load(std::memory_order_relaxed);
+        }
+    private:
+        std::shared_ptr<std::atomic_bool> m_Repeating;
+    };
+
+    /// @brief Define how a schedule should be executed
     enum class ExecutionPolicy : uint8_t
     {
-        Single,
-        Repeat
+        Single, // Run once
+        Repeat  // Run repeatedly, until signalled to stop
+    };
+
+    struct ScheduleInfo
+    {
+        ScheduleInfo() : policy(ExecutionPolicy::Single), repeating(std::make_shared<std::atomic_bool>(false)) {}
+        ScheduleInfo(ExecutionPolicy pol, std::shared_ptr<std::atomic_bool> rep) : policy(pol), repeating(rep) {}
+
+        ExecutionPolicy policy;
+
+        // Note: Shared between Parallel schedules
+        std::shared_ptr<std::atomic_bool> repeating;
     };
 
     class Tasker
     {
     private:
         std::vector<std::vector<size_t>> m_ScheduleHashes;
-        std::unordered_map<size_t, std::pair<ExecutionPolicy, std::vector<std::shared_ptr<TaskNode>>>> m_TasksPerSchedule;
+        std::unordered_map<size_t, std::pair<ScheduleInfo, std::vector<std::shared_ptr<TaskNode>>>> m_TasksPerSchedule;
         WorkerPool m_Workers;
 
         ResourceStore m_Resources{};
@@ -105,22 +148,34 @@ namespace tskr
         void process_schedule_types(ExecutionPolicy policy)
         {
             std::vector<size_t> par_schedules{};
+            std::shared_ptr<std::atomic_bool> repeating = std::make_shared<std::atomic_bool>(false);
+
             // TODO: Run these in parallel
             if constexpr (impl::is_parallel<T>::value)
             {
                 // T is Parallel<A,B,C>
-                std::apply([this, &par_schedules, policy](auto... inner){
+                std::apply([this, &par_schedules, policy, &repeating](auto... inner) {
                     (par_schedules.push_back(typeid(inner).hash_code()), ...);
-                    (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::make_pair(policy, std::vector<std::shared_ptr<TaskNode>>{})), ...);
+                    if (policy == ExecutionPolicy::Repeat)
+                    {
+                        repeating->store(true, std::memory_order_relaxed);
+                        (m_Resources.insert(Repeating<decltype(inner)>(repeating)), ...);
+                    }
+                    (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::make_pair(ScheduleInfo(policy, repeating), std::vector<std::shared_ptr<TaskNode>>{})), ...);
                 }, typename impl::parallel_inner<T>::types{});
             }
             else
             {
                 // T is a single schedule
                 par_schedules.push_back(typeid(T).hash_code());
-                m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::make_pair(policy, std::vector<std::shared_ptr<TaskNode>>{}));
+                if (policy == ExecutionPolicy::Repeat)
+                {
+                    repeating->store(true, std::memory_order_relaxed);
+                    m_Resources.insert<Repeating<T>>(Repeating<T>(repeating));
+                }
+                m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::make_pair(ScheduleInfo(policy, repeating), std::vector<std::shared_ptr<TaskNode>>{}));
             }
             m_ScheduleHashes.push_back(par_schedules);
         }
-    };    
+    };
 } // namespace tskr
