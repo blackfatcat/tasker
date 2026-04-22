@@ -41,6 +41,16 @@ namespace tskr
             return Resource(ref);
         }
 
+        template<typename T>
+        Resource<T> get(size_t type_id)
+        {
+            assert(m_ResourceMap.contains(type_id) && "Resource not registered.");
+
+            T* ref = std::any_cast<T>(m_ResourceMap[type_id].get());
+
+            return Resource(ref);
+        }
+
     private:
         std::unordered_map<size_t, std::unique_ptr<std::any>> m_ResourceMap{};
     };
