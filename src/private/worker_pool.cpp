@@ -42,7 +42,7 @@ namespace tskr
     {
         int id = s_WorkerId;
 
-        if (task->task->spawn_type == Task::SpawnType::Scheduled && increase_task_counter)
+        if (task->task->spawn_type == TaskSpawnType::Scheduled && increase_task_counter)
             add_task_count(1);
 
         if (id >= 0 && id < m_ThreadCount)
@@ -158,7 +158,7 @@ namespace tskr
                 for (auto& dependent : task_node->dependents)
                     dependent->deps_remaining.fetch_sub(1, std::memory_order_release);
 
-                if(task_node->task->spawn_type != Task::SpawnType::Standalone)
+                if(task_node->task->spawn_type != TaskSpawnType::Standalone)
                     m_TasksRemaining.fetch_sub(1, std::memory_order_release);
             }
             else
