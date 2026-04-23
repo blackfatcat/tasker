@@ -1,0 +1,46 @@
+#pragma once
+
+#include <memory>
+
+#include "worker_pool.hpp"
+#include "types.hpp"
+#include "task.hpp"
+
+namespace tskr
+{
+    class Commands
+    {
+    private:
+        std::shared_ptr<WorkerPool> m_WorkerPool;
+        std::shared_ptr<ResourceStore> m_Resources;
+    public:
+        Commands() {}
+        Commands(std::shared_ptr<WorkerPool> pool, std::shared_ptr<ResourceStore> resources);
+        ~Commands();
+
+        template<typename Fn>
+        void spawn(Fn f, TaskSpawnType spawn_type)
+        {
+            switch (spawn_type)
+            {
+            case TaskSpawnType::Standalone:
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources), false);
+                break;
+            case TaskSpawnType::Scheduled:
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources), true);
+                break;
+            default:
+                break;
+            }
+        }
+    };
+
+    template<>
+    struct ParamFetcher<Commands>
+    {
+        static Commands& fetch(std::shared_ptr<ResourceStore> store)
+        {
+            return store->get_ref<Commands>();
+        }
+    };
+} // namespace tskr
