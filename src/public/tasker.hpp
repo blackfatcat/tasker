@@ -108,8 +108,7 @@ namespace tskr
             using after_ts = typename TaskConfig<Tasks...>::after_t;
             using before_ts = typename TaskConfig<Tasks...>::before_t;
 
-            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks_ts{}, m_Resources);
-            TaskNode::wire_dependencies(tasks, map, m_Resources);
+            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks, m_Resources);
 
             std::vector<std::shared_ptr<TaskNode>>& task_nodes = m_TasksPerSchedule.at(schedule_id).second;
 

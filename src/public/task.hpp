@@ -219,13 +219,18 @@ namespace tskr
         }
 
         template<typename... Ts>
-        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(std::tuple<Ts...> tasks, ResourceStore& store)
+        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(TaskConfig<Ts...> task_cfg, ResourceStore& store)
         {
+            using tasks_tuple = decltype(task_cfg)::tasks_t;
+            auto tasks = tasks_tuple{};
+
             std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map;
 
             impl::for_each_in_tuple(tasks, [&](auto task) {
                 map.emplace(typeid(task).accessor(), TaskNode::make_from_taskfn(task, store));
             });
+
+            TaskNode::wire_dependencies(task_cfg, map, store);
 
             return map;
         }
