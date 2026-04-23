@@ -26,8 +26,15 @@ struct VecRes
     std::vector<int> vec{ 1,2,3,4,5,6 };
 };
 
-void task1()
+void task_inner()
 {
+    std::cout << "Inner" << std::endl;
+}
+
+void task1(tskr::Commands commands)
+{
+    commands.spawn(tskr::TaskFn<task_inner, tskr::TaskSpawnType::Standalone>{}, tskr::TaskSpawnType::Scheduled);
+
     const std::vector<int>& in{ 1,2,3,4,5,6 };
     int total = 0;
     for (const auto& i : in)
