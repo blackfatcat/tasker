@@ -17,32 +17,44 @@ namespace tskr
         // TODO: Pass in resources
         m_Workers.work();
 
-        bool first_run = true;
         bool repeating = true;
 
         // Main loop
         while (m_Resources.get<Running>()->is_running() && repeating)
         {
             repeating = false;
-            for (auto& schedule_set : m_ScheduleHashes)
+            //for (auto& schedule_set : m_ScheduleHashes)
+            for (size_t schedule_set_idx = 0; schedule_set_idx < m_ScheduleHashes.size();)
             {
+                std::vector<std::size_t>& schedule_set = m_ScheduleHashes[schedule_set_idx];
+
                 for (auto& schedule : schedule_set)
                 {
                     std::pair<ScheduleInfo, std::vector<std::shared_ptr<TaskNode>>>& tasks = m_TasksPerSchedule[schedule];
                     repeating = tasks.first.repeating->load(std::memory_order_relaxed);
-                    if (repeating || first_run)
+
+                    // Tasks are running already, so this atomic add will prevent the scenario where a task is executed,
+                    // decreasing the counter to 0 and falsly signalling that there are no more left when the rest have just not been enqueued
+                    m_Workers.add_task_count(tasks.second.size());
+                    for (auto& task : tasks.second)
                     {
-                        // Tasks are running already, so this atomic add will prevent the scenario where a task is executed,
-                        // decreasing the counter to 0 and falsly signalling that there are no more left when the rest have just not been enqueued
-                        m_Workers.add_task_count(tasks.second.size());
-                        for (auto& task : tasks.second)
-                        {
-                            if (task->deps_remaining.load(std::memory_order_acquire) <= 0)
-                                m_Workers.enqueue(task, false);
-                        }
+                        m_Workers.enqueue(task, false);
                     }
                 }
                 m_Workers.wait_for_all();
+
+                // Did repeat status changed from any of the tasks?
+                for (auto& schedule : schedule_set)
+                {
+                    std::pair<ScheduleInfo, std::vector<std::shared_ptr<TaskNode>>>& tasks = m_TasksPerSchedule[schedule];
+                    repeating = tasks.first.repeating->load(std::memory_order_relaxed);
+                }
+
+                // Keep repeating the schedule set that's registered with tskr::ExecutionPolicy::Repeat
+                if (repeating)
+                    schedule_set_idx -= 1;
+
+                schedule_set_idx++;
             }
 
             // Have any of the schedules' repeat status changed?
@@ -58,8 +70,6 @@ namespace tskr
                 if (repeating)
                     break;
             }
-
-            first_run = false;
         }
     }
 

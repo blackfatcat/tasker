@@ -159,11 +159,14 @@ namespace tskr
         {
             if constexpr (std::tuple_size_v<args> <= 0)
                 Fn();
+            else
+            {
+                // Call Fn injecting resources from the ResourceStore
+                std::apply([&store](auto... param_types) {
+                    Fn(ParamFetcher<decltype(param_types)>::fetch(store)...);
+                }, args{});
+            }
 
-            // Call Fn injecting resources from the ResourceStore
-            std::apply([&store](auto... param_types) {
-                Fn(ParamFetcher<decltype(param_types)>::fetch(store)...);
-            }, args{});
         }
 
         static std::unique_ptr<Task> make_task(ResourceStore& store)
@@ -290,4 +293,27 @@ template<typename A, typename B >
 constexpr auto operator,(A, B)
 {
     return tskr::TaskConfigBase<A, B>{};
+}
+
+template<typename... Ts, auto U>
+constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U>) {
+    using tasks_from_cfg = tskr::TaskConfig<Ts...>::tasks_t;
+
+    using merged_ts = decltype(std::tuple_cat(
+        std::declval<std::tuple<tskr::TaskFn<U>>>(),
+        std::declval<tasks_from_cfg>()
+    ));
+    return tskr::TaskConfig<merged_ts, std::tuple<>, std::tuple<>>{};
+}
+
+template<typename... As, typename... Bs>
+constexpr auto operator,(tskr::TaskConfig<As...>, tskr::TaskConfig<Bs...>) {
+    using tasks_from_cfg_a = tskr::TaskConfig<As...>::tasks_t;
+    using tasks_from_cfg_b = tskr::TaskConfig<Bs...>::tasks_t;
+
+    using merged_ts = decltype(std::tuple_cat(
+        std::declval<tasks_from_cfg_a>(),
+        std::declval<tasks_from_cfg_b>()
+    ));
+    return tskr::TaskConfig<merged_ts, std::tuple<>, std::tuple<>>{};
 }

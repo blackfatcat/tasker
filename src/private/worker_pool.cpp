@@ -151,13 +151,18 @@ namespace tskr
                 continue;
             }
 
-            task_node->task->fun(task_node->task->payload);
+            if (task_node->deps_remaining.load(std::memory_order_acquire) <= 0)
+            {
+                task_node->task->fun(task_node->task->payload);
+                 
+                for (auto& dependent : task_node->dependents)
+                    dependent->deps_remaining.fetch_sub(1, std::memory_order_release);
 
-            if(task_node->task->spawn_type != Task::SpawnType::Standalone)
-                m_TasksRemaining.fetch_sub(1, std::memory_order_release);
-
-            for (auto& dependant : task_node->dependents)
-                enqueue(dependant, false);
+                if(task_node->task->spawn_type != Task::SpawnType::Standalone)
+                    m_TasksRemaining.fetch_sub(1, std::memory_order_release);
+            }
+            else
+                enqueue(task_node, false);
         }
     }
 
