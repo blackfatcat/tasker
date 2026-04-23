@@ -6,6 +6,10 @@
 
 namespace tskr
 {
+    // !! USED FOR DEBUG TO EASILY SWAP BETWEEN HASHES AND STRINGS AS KEYS IN THE TASK TYPE MAP
+    using KEY_TYPE = const char*;
+    #define accessor name
+
     /// @brief Define schedules to be executed in parallel
     /// @tparam Ts a pack of types that will mark schedules for parallel execution
     template<typename... Ts>
