@@ -67,6 +67,7 @@ namespace tskr
 
         Fn fun;
         void* payload;
+        const char* name;
         std::atomic<int> deps{ 0 };
         TaskSpawnType spawn_type = TaskSpawnType::Scheduled;
     };
@@ -169,6 +170,7 @@ namespace tskr
                 TaskFn<Fn>::run(*store);
             };
             t->payload = &store;
+            t->name = typeid(TaskFn<Fn, TaskType>{}).name();
             t->spawn_type = TaskType;
             return t;
         }
