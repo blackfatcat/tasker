@@ -29,7 +29,7 @@ namespace tskr
             //for (auto& schedule_set : m_ScheduleHashes)
             for (size_t schedule_set_idx = 0; schedule_set_idx < m_ScheduleHashes.size();)
             {
-                std::vector<std::size_t>& schedule_set = m_ScheduleHashes[schedule_set_idx];
+                std::vector<KEY_TYPE>& schedule_set = m_ScheduleHashes[schedule_set_idx];
 
                 for (auto& schedule : schedule_set)
                 {

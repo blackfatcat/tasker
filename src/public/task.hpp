@@ -11,10 +11,6 @@
 
 namespace tskr
 {
-    // !! USED FOR DEBUG TO EASILY SWAP BETWEEN HASHES AND STRINGS AS KEYS IN THE TASK TYPE MAP
-    using KEY_TYPE = const char*;
-    #define accessor name
-
     namespace impl
     {
         // Traits for function introspection, since the system needs to know the arguments and return type (if any) for proper scheduling
