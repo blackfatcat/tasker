@@ -127,10 +127,5 @@ int main()
         .register_resource(VecRes{})
         .run();
 
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1s);
-
-    tasker.halt();
-
     return 0;
 }
