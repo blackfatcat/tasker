@@ -146,6 +146,8 @@ namespace tskr
         using args = typename task_traits::args;
         using return_type = typename task_traits::return_type;
 
+        static constexpr TaskSpawnType task_type = TaskType;
+
         static void run(std::shared_ptr<ResourceStore>& store)
         {
             if constexpr (std::tuple_size_v<args> <= 0)
@@ -285,12 +287,12 @@ constexpr auto operator,(A, B)
     return tskr::TaskConfigBase<A, B>{};
 }
 
-template<typename... Ts, auto U>
-constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U>) {
+template<typename... Ts, auto U, tskr::TaskSpawnType SpawnType>
+constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U, SpawnType>) {
     using tasks_from_cfg = tskr::TaskConfig<Ts...>::tasks_t;
 
     using merged_ts = decltype(std::tuple_cat(
-        std::declval<std::tuple<tskr::TaskFn<U>>>(),
+        std::declval<std::tuple<tskr::TaskFn<U, SpawnType>>>(),
         std::declval<tasks_from_cfg>()
     ));
     return tskr::TaskConfig<merged_ts, std::tuple<>, std::tuple<>>{};

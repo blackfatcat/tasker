@@ -19,9 +19,9 @@ namespace tskr
         ~Commands();
 
         template<typename Fn>
-        void spawn(Fn f, TaskSpawnType spawn_type)
+        void spawn(Fn f)
         {
-            switch (spawn_type)
+            switch (Fn::task_type)
             {
             case TaskSpawnType::Standalone:
                 m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources), false);
