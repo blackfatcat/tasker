@@ -2,9 +2,12 @@
 
 namespace tskr
 {
-    Tasker::Tasker(/* args */)
+    Tasker::Tasker(uint8_t thread_count, size_t per_worker_cap)
     {
-        m_Resources.insert(Running{});
+        m_Workers = std::make_shared<WorkerPool>(thread_count, per_worker_cap);
+        m_Resources = std::make_shared<ResourceStore>();
+        m_Resources->insert(Running{});
+        m_Resources->insert(Commands(m_Workers, m_Resources));
     }
 
     Tasker::~Tasker()
@@ -15,12 +18,12 @@ namespace tskr
 	void Tasker::run()
     {
         // TODO: Pass in resources
-        m_Workers.work();
+        m_Workers->work();
 
         bool repeating = true;
 
         // Main loop
-        while (m_Resources.get<Running>()->is_running() && repeating)
+        while (m_Resources->get<Running>()->is_running() && repeating)
         {
             repeating = false;
             //for (auto& schedule_set : m_ScheduleHashes)
@@ -35,13 +38,13 @@ namespace tskr
 
                     // Tasks are running already, so this atomic add will prevent the scenario where a task is executed,
                     // decreasing the counter to 0 and falsly signalling that there are no more left when the rest have just not been enqueued
-                    m_Workers.add_task_count(tasks.second.size());
+                    m_Workers->add_task_count(tasks.second.size());
                     for (auto& task : tasks.second)
                     {
-                        m_Workers.enqueue(task, false);
+                        m_Workers->enqueue(task, false);
                     }
                 }
-                m_Workers.wait_for_all();
+                m_Workers->wait_for_all();
 
                 // Did repeat status changed from any of the tasks?
                 for (auto& schedule : schedule_set)
@@ -76,21 +79,7 @@ namespace tskr
     void Tasker::halt()
     {
         m_Running.store(false);
-        m_Workers.wait_for_all();
-        m_Workers.stop();
-    }
-
-    Running::Running()
-    {
-        m_Running = std::make_shared<std::atomic_bool>(true);
-    }
-
-    void Running::stop()
-    {
-        m_Running->store(false, std::memory_order_relaxed);
-    }
-    bool Running::is_running()
-    {
-        return m_Running->load(std::memory_order_relaxed);
+        m_Workers->wait_for_all();
+        m_Workers->stop();
     }
 }
