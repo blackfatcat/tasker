@@ -97,6 +97,7 @@ void task6()
 
 void task7(
     tskr::Resource<tskr::Repeating<Main>> main_schedule_repeating
+    // tskr::Resource<tskr::Repeating<Startup>> startup_schedule_repeating
 )
 {
     assert(done3.load(std::memory_order_acquire) && done4.load(std::memory_order_acquire));
@@ -104,6 +105,9 @@ void task7(
 
     // Stops Main and Render from repeating, terminating the program
     main_schedule_repeating->stop();
+
+    // Starts repeating Startup
+    // startup_schedule_repeating->start();
 
     const std::vector<int>& in{ 1,2,3,4,5,6 };
     int total = 0;
