@@ -22,13 +22,19 @@ namespace tskr
         std::shared_ptr<std::atomic_bool> m_Running;
     };
 
-    /// @brief Determines if a schedule should continue repeating
-    /// Can be used within a task to determine when the specified schedule should stop repeating
+    /// @brief Determines if a schedule should continue repeating.
+    /// @brief Registered as Resource<Repeating<ScheduleType>> for each registered schedule.
+    /// @brief Initialized with true if the Schedule is repeating
+    /// @brief Can be used within a task to determine when the specified schedule should start/stop repeating
     template<typename Schedule>
     struct Repeating
     {
         Repeating(std::shared_ptr<std::atomic_bool> repeating) : m_Repeating(repeating)
         {
+        }
+        void start()
+        {
+            m_Repeating->store(true, std::memory_order_relaxed);
         }
         void stop()
         {
@@ -155,11 +161,11 @@ namespace tskr
                 // T is Parallel<A,B,C>
                 std::apply([this, &par_schedules, policy, &repeating](auto... inner) {
                     (par_schedules.push_back(typeid(inner).hash_code()), ...);
+                    
                     if (policy == ExecutionPolicy::Repeat)
-                    {
                         repeating->store(true, std::memory_order_relaxed);
-                        (m_Resources.insert(Repeating<decltype(inner)>(repeating)), ...);
-                    }
+                    
+                    (m_Resources.insert(Repeating<decltype(inner)>(repeating)), ...);
                     (m_TasksPerSchedule.emplace(typeid(inner).hash_code(), std::make_pair(ScheduleInfo(policy, repeating), std::vector<std::shared_ptr<TaskNode>>{})), ...);
                 }, typename impl::parallel_inner<T>::types{});
             }
@@ -167,11 +173,11 @@ namespace tskr
             {
                 // T is a single schedule
                 par_schedules.push_back(typeid(T).hash_code());
+                
                 if (policy == ExecutionPolicy::Repeat)
-                {
                     repeating->store(true, std::memory_order_relaxed);
-                    m_Resources.insert<Repeating<T>>(Repeating<T>(repeating));
-                }
+                
+                m_Resources.insert(Repeating<T>(repeating));
                 m_TasksPerSchedule.emplace(typeid(T).hash_code(), std::make_pair(ScheduleInfo(policy, repeating), std::vector<std::shared_ptr<TaskNode>>{}));
             }
             m_ScheduleHashes.push_back(par_schedules);
