@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "resource.hpp"
+#include "types.hpp"
 
 namespace tskr
 {
@@ -66,18 +67,12 @@ namespace tskr
     /// @brief The backbone of the system - a single point of execution tied to a function
     struct Task
     {
-        enum class SpawnType : uint8_t
-        {
-            Scheduled,  // Task will be added to the current schedule and waited on
-            Standalone, // Standalone task, will not be waited on
-        };
-
         using Fn = void(*)(void*);
 
         Fn fun;
         void* payload;
         std::atomic<int> deps{ 0 };
-        SpawnType spawn_type = SpawnType::Scheduled;
+        TaskSpawnType spawn_type = TaskSpawnType::Scheduled;
     };
 
     /// @brief 
@@ -137,9 +132,9 @@ namespace tskr
     template<typename T>
     struct ParamFetcher<Resource<T>>
     {
-        static Resource<T> fetch(ResourceStore& store)
+        static Resource<T> fetch(std::shared_ptr<ResourceStore>& store)
         {
-            return store.get<T>();
+            return store->get<T>();
         }
     };
 
@@ -147,7 +142,7 @@ namespace tskr
     /// A compile-time info carrier for either a free function, callable object or a member function.
     /// tparam Fn Funtion pointer to the function to be executed
     /// tparam TaskType the spawn type of the task - Schedueld or Standalone
-    template<auto Fn, Task::SpawnType TaskType = Task::SpawnType::Scheduled>
+    template<auto Fn, TaskSpawnType TaskType = TaskSpawnType::Scheduled>
     struct TaskFn
     {
         using task_traits = impl::function_traits<decltype(Fn)>;
@@ -155,7 +150,7 @@ namespace tskr
         using args = typename task_traits::args;
         using return_type = typename task_traits::return_type;
 
-        static void run(ResourceStore& store)
+        static void run(std::shared_ptr<ResourceStore>& store)
         {
             if constexpr (std::tuple_size_v<args> <= 0)
                 Fn();
@@ -166,14 +161,13 @@ namespace tskr
                     Fn(ParamFetcher<decltype(param_types)>::fetch(store)...);
                 }, args{});
             }
-
         }
 
-        static std::unique_ptr<Task> make_task(ResourceStore& store)
+        static std::unique_ptr<Task> make_task(std::shared_ptr<ResourceStore>& store)
         {
             auto t = std::make_unique<Task>();
             t->fun = [](void* data) {
-                ResourceStore* store = static_cast<ResourceStore*>(data);
+                std::shared_ptr<ResourceStore>* store = static_cast<std::shared_ptr<ResourceStore>*>(data);
                 TaskFn<Fn>::run(*store);
             };
             t->payload = &store;
@@ -213,16 +207,16 @@ namespace tskr
         std::atomic<int> deps_remaining;                   // incoming edges
 
         template<typename TaskFnT>
-        static std::shared_ptr<TaskNode> make_from_taskfn(TaskFnT task, ResourceStore& store)
+        static std::shared_ptr<TaskNode> make_from_taskfn(TaskFnT task, std::shared_ptr<ResourceStore>& store)
         {
-            auto node = std::make_shared<TaskNode>();
+            std::shared_ptr<TaskNode> node = std::make_shared<TaskNode>();
             node->task = task.make_task(store);
             node->deps_remaining.store(0, std::memory_order_relaxed);
             return node;
         }
 
         template<typename... Ts>
-        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(TaskConfig<Ts...> task_cfg, ResourceStore& store)
+        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(TaskConfig<Ts...> task_cfg, std::shared_ptr<ResourceStore>& store)
         {
             using tasks_tuple = decltype(task_cfg)::tasks_t;
             auto tasks = tasks_tuple{};
@@ -239,7 +233,7 @@ namespace tskr
         }
 
         template<typename... Ts>
-        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>>& map, ResourceStore& store)
+        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>>& map, std::shared_ptr<ResourceStore>& store)
         {
             using tasks_ts = typename TaskConfig<Ts...>::tasks_t;
             using after_ts = typename TaskConfig<Ts...>::after_t;
