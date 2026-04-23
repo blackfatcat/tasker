@@ -42,13 +42,13 @@ namespace tskr
         }
 
         template<typename T>
-        Resource<T> get(size_t type_id)
+        T& get_ref()
         {
-            assert(m_ResourceMap.contains(type_id) && "Resource not registered.");
+            assert(m_ResourceMap.contains(typeid(T).hash_code()) && "Resource not registered.");
 
-            T* ref = std::any_cast<T>(m_ResourceMap[type_id].get());
+            T* ref = std::any_cast<T>(m_ResourceMap[typeid(T).hash_code()].get());
 
-            return Resource(ref);
+            return *ref;
         }
 
     private:
