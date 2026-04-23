@@ -33,7 +33,7 @@ void task_inner()
 
 void task1(tskr::Commands commands)
 {
-    commands.spawn(tskr::TaskFn<task_inner, tskr::TaskSpawnType::Standalone>{}, tskr::TaskSpawnType::Scheduled);
+    commands.spawn(tskr::TaskFn<task_inner, tskr::TaskSpawnType::Standalone>{});
 
     const std::vector<int>& in{ 1,2,3,4,5,6 };
     int total = 0;
@@ -177,7 +177,7 @@ void task11()
     std::cout << "Done" << std::endl;
 }
 
-int main() 
+int main()
 {
     tskr::Tasker tasker;
 
