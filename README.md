@@ -60,3 +60,7 @@ asd
 ---
 * [ ] MT Gen of cmd bufs
 ##### Example: 
+---
+## ❌ Known issues
+
+* [ ] Parallel schedules share the same resource store, making it highly inefficient to modify it from within their tasks. A possible solution could be to have a resource store per-schedule and sync them whenever desired (on a signal or a last schedule that extracts and syncs like Bevy does, I believe). For now the user has to manually sync data and make sure that there are no races between tasks by ordering them correctly.
