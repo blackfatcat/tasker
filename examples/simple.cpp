@@ -182,7 +182,7 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
-        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat, 0b0011, 2)
+        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat, 4, 0b0011)
         .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single)
         .add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}))
         .add_tasks<Main>(tskr::TaskFn<task4>{}.after(tskr::TaskFn<task3>{}))
