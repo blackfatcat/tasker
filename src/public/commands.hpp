@@ -8,6 +8,8 @@
 
 namespace tskr
 {
+    /// @brief Allows for various operations from within a task.
+    /// @brief Can be queried as a param to a task: `task(Commands cmd){}`
     class Commands
     {
     private:
@@ -35,6 +37,7 @@ namespace tskr
         }
     };
 
+    /// @brief Specialization for the Commands class, which allows for a direct access within a task
     template<>
     struct ParamFetcher<Commands>
     {
