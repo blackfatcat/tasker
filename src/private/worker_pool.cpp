@@ -1,5 +1,7 @@
 #include "worker_pool.hpp"
 
+#include <chrono>
+
 #ifdef TASKER_WINDOWS
 
 #define VC_EXTRALEAN
@@ -158,7 +160,7 @@ namespace tskr
             if (!task_node)
             {
                 // No work to do...
-                std::this_thread::yield();
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
             }
 
