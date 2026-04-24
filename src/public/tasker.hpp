@@ -4,7 +4,6 @@
 #include <unordered_map>
 
 #include "task.hpp"
-#include "scheduler.hpp"
 #include "types.hpp"
 #include "worker_pool.hpp"
 #include "resource.hpp"
@@ -29,11 +28,14 @@ namespace tskr
 
         /// @brief
         /// @tparam ...Schedules a pack of unique types that will be registered as schedules. 
+        /// @param policy a pack of unique types that will be registered as schedules. 
+        /// @param max_cores Number of maximum cores the schedule can use. 
+        /// @param affinity_mask Sets preference towards a specific core or a set of cores (essesntially pinning the tasks to the selected cores). Will override max_cores. 
         /// @note The order the schedules are typed in will be the order they will be executed in as well,
         /// unless preceeded with Parallel<> in which case the schedules inside it will all be ran together
         /// @return reference to self for chaining
         template<typename ...Schedules>
-        Tasker& add_schedules(ExecutionPolicy policy, size_t affinity_mask = 0xFFFFFFFFFFFFFFFF, uint16_t max_cores = 0)
+        Tasker& add_schedules(ExecutionPolicy policy, uint16_t max_cores = 0, size_t affinity_mask = 0xFFFFFFFFFFFFFFFF)
         {
             m_ScheduleHashes.reserve(sizeof...(Schedules));
             m_TasksPerSchedule.reserve(sizeof...(Schedules));
