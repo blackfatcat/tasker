@@ -82,9 +82,12 @@ target_include_directories(${PROJECT_NAME}
         src/extern
 )
 
+SET(TSKR_BUILD_EXAMPLE "" CACHE STRING "asd")
+
+string(COMPARE GREATER ${TSKR_BUILD_EXAMPLE} "" example_defined)
+
 # Build Examples
 if(${TSKR_BUILD_EXAMPLES_ALL})
-
     # Library will propagate the CXX standart to the Examples projects as well
     target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
@@ -96,4 +99,14 @@ if(${TSKR_BUILD_EXAMPLES_ALL})
         add_executable(${example_name} ${example})
         target_link_libraries(${example_name} PRIVATE ${PROJECT_NAME})
     endforeach()
-endif(${TSKR_BUILD_EXAMPLES_ALL})
+elseif(example_defined)
+    # Library will propagate the CXX standart to the Examples projects as well
+    target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+
+    set(example_source "examples/${TSKR_BUILD_EXAMPLE}.cpp")
+
+    message("Building example: ${example_source}")
+
+    add_executable(${TSKR_BUILD_EXAMPLE} ${example_source})
+    target_link_libraries(${TSKR_BUILD_EXAMPLE} PRIVATE ${PROJECT_NAME})
+endif()
