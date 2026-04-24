@@ -188,8 +188,9 @@ int main()
         .add_tasks<Main>(tskr::TaskFn<task4>{}.after(tskr::TaskFn<task3>{}))
         .add_tasks<Render>((tskr::TaskFn<task6>{}, tskr::TaskFn<task7>{}).after(tskr::TaskFn<task5>{}))
         .add_tasks<Shutdown>((tskr::TaskFn<task8>{}, tskr::TaskFn<task9>{}, tskr::TaskFn<task10>{}).before(tskr::TaskFn<task11>{}))
-        .register_resource(VecRes{})
-        .run();
+        .register_resource(VecRes{});
+
+    tasker.print_graph("graph.dot");
 
     return 0;
 }

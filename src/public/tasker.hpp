@@ -94,6 +94,10 @@ namespace tskr
         /// Shut down all work
         void halt();
 
+        /// @brief Prints the graph in a readdable format either to the console (if no path is provided) or to the file provided in the .dot format
+        /// @param filename relative to the current working directory path to the file to which to dump a .dot representation of the task graph
+        void print_graph(std::string_view filename = "");
+
     private:
         template <typename T>
         void process_schedule_types(ExecutionPolicy policy)
