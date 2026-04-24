@@ -91,14 +91,21 @@ namespace tskr
         std::shared_ptr<std::atomic_bool> m_Repeating;
     };
 
+    // TODO: This is HUGE!
     struct ScheduleInfo
     {
-        ScheduleInfo() : policy(ExecutionPolicy::Single), repeating(std::make_shared<std::atomic_bool>(false)) {}
-        ScheduleInfo(ExecutionPolicy pol, std::shared_ptr<std::atomic_bool> rep) : policy(pol), repeating(rep) {}
+        ScheduleInfo() : policy(ExecutionPolicy::Single), repeating(std::make_shared<std::atomic_bool>(false)), active_workers(std::make_shared<std::atomic_uint8_t>(0)), name("") {}
+        ScheduleInfo(ExecutionPolicy pol, std::shared_ptr<std::atomic_bool> rep, const char* name, size_t affinity_mask = 0xFFFFFFFFFFFFFFFF, uint16_t max_cores = 0) : name(name), policy(pol), repeating(rep), active_workers(std::make_shared<std::atomic_uint8_t>(0)), affinity_mask(affinity_mask), max_cores(max_cores) {}
 
-        ExecutionPolicy policy;
+        const char* name;
 
         // Note: Shared between Parallel schedules
         std::shared_ptr<std::atomic_bool> repeating;
+
+        std::shared_ptr<std::atomic_uint8_t> active_workers;
+
+        size_t affinity_mask = 0xFFFFFFFFFFFFFFFF;  // All cores allowed
+        uint16_t max_cores = 0;                     // 0 = unlimited
+        ExecutionPolicy policy;
     };
 } // namespace tskr

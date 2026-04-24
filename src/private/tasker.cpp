@@ -10,8 +10,11 @@ namespace tskr
     {
         m_Workers = std::make_shared<WorkerPool>(thread_count, per_worker_cap);
         m_Resources = std::make_shared<ResourceStore>();
+
+        // Insert common resources
         m_Resources->insert(Running{});
         m_Resources->insert(Commands(m_Workers, m_Resources));
+        m_Resources->insert(ScheduleInfo{});
     }
 
     Tasker::~Tasker()
@@ -38,6 +41,11 @@ namespace tskr
                 for (auto& schedule : schedule_set)
                 {
                     std::pair<ScheduleInfo, std::vector<std::shared_ptr<TaskNode>>>& tasks = m_TasksPerSchedule[schedule];
+                    ScheduleInfo info_copy = tasks.first;
+
+                    // FIX: This will not properly insert the schedule info for parallel schedules
+                    m_Resources->insert(info_copy);
+
                     repeating = tasks.first.repeating->load(std::memory_order_relaxed);
 
                     // Tasks are running already, so this atomic add will prevent the scenario where a task is executed,

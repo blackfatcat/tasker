@@ -28,7 +28,7 @@ namespace tskr
         template<typename T>
         void insert(T&& value)
         {
-            m_ResourceMap.emplace(typeid(T).hash_code(), std::make_unique<std::any>(std::move(value)));
+            m_ResourceMap.insert_or_assign(typeid(T).hash_code(), std::make_unique<std::any>(std::move(value)));
         }
 
         template<typename T>

@@ -28,10 +28,10 @@ struct VecRes
 
 void task_inner()
 {
-    std::cout << "Inner" << std::endl;
+    std::cout << "Inner "<< std::endl;
 }
 
-void task1(tskr::Commands commands)
+void task1(tskr::Commands commands, tskr::Resource<tskr::ScheduleInfo> info)
 {
     commands.spawn(tskr::TaskFn<task_inner, tskr::TaskSpawnType::Standalone>{});
 
@@ -41,7 +41,6 @@ void task1(tskr::Commands commands)
     {
         total += i;
     }
-    std::cout << "Start" << std::endl;
 
     done1.store(true, std::memory_order_release);
 }
@@ -69,6 +68,7 @@ void task3(tskr::Resource<VecRes> vec_res)
     {
         total += i;
     }
+    
     done3.store(true, std::memory_order_release);
 }
 
@@ -182,15 +182,14 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
-        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat)
+        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat, 0b0011, 2)
         .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single)
         .add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}))
         .add_tasks<Main>(tskr::TaskFn<task4>{}.after(tskr::TaskFn<task3>{}))
         .add_tasks<Render>((tskr::TaskFn<task6>{}, tskr::TaskFn<task7>{}).after(tskr::TaskFn<task5>{}))
         .add_tasks<Shutdown>((tskr::TaskFn<task8>{}, tskr::TaskFn<task9>{}, tskr::TaskFn<task10>{}).before(tskr::TaskFn<task11>{}))
-        .register_resource(VecRes{});
-
-    tasker.print_graph("graph.dot");
+        .register_resource(VecRes{})
+        .run();
 
     return 0;
 }
