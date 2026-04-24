@@ -1,5 +1,9 @@
 #include "tasker.hpp"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+
 namespace tskr
 {
     Tasker::Tasker(uint8_t thread_count, size_t per_worker_cap)
@@ -82,4 +86,120 @@ namespace tskr
         m_Workers->wait_for_all();
         m_Workers->stop();
     }
+
+    namespace
+    {
+        std::string extract_task_name(const std::string& s)
+        {
+            // Find the first '('
+            size_t pos = s.find('(');
+            if (pos == std::string::npos)
+                return {};
+
+            // Walk left to find the start of the identifier
+            size_t end = pos;
+            size_t start = end;
+
+            while (start > 0 && (std::isalnum(s[start - 1]) || s[start - 1] == '_'))
+                --start;
+
+            return s.substr(start, end - start);
+        }
+
+        std::string extract_schedule_name(std::string& s)
+        {
+            static constexpr std::string_view prefix = "struct ";
+            s.erase(0, prefix.size());
+            return s;
+        }
+    }
+
+    void Tasker::print_graph(std::string_view filename)
+    {
+        if (filename.size() == 0)
+        {
+            for (auto& [key, schedule_info_and_nodes] : m_TasksPerSchedule)
+            {
+                std::string schedule_name_str = std::string(key);
+                std::cout << "=== Schedule "<< extract_schedule_name(schedule_name_str) << " ===" << '\n';
+                auto& nodes = schedule_info_and_nodes.second;
+
+                for (auto& node : nodes) {
+                    std::cout << "  Task: " << extract_task_name(node->task->name) << "\n";
+                    std::cout << "    Depends on: " << node->deps_remaining << "\n";
+                    std::cout << "    Dependents: ";
+
+                    for (auto& dep : node->dependents)
+                        std::cout << extract_task_name(dep->task->name) << " ";
+
+                    std::cout << "\n\n";
+                }
+            }
+        }
+        else
+        {
+            std::ofstream out(filename.data(), std::ios::trunc);
+            out << "digraph G {\n";
+            out << "  compound=true;";
+            out << "  node [shape=box, fontname=\"Consolas\"];\n";
+
+            int prev_idx = -1;
+
+            for (int i = 0; i < m_ScheduleHashes.size(); i++)
+            {
+                auto& scheduleSet = m_ScheduleHashes[i];
+
+                out << "subgraph cluster_" << i << " {\n";
+                for (auto& scheduleHash : scheduleSet)
+                {
+                    auto& nodes = m_TasksPerSchedule[scheduleHash].second;
+
+                    std::string schedule_name_str = std::string(scheduleHash);
+                    std::string schedule_name = extract_schedule_name(schedule_name_str);
+
+                    out << "  subgraph cluster_" << schedule_name << " {\n";
+                    out << "    label=\"" << schedule_name << "\";\n";
+                    out << "    style=filled;\n";
+                    out << "    color=lightgrey;\n";
+                    out << "    node [style=filled, color=white];\n";
+
+                    // Emit nodes
+                    for (size_t j = 0; j < nodes.size(); j++)
+                    {
+                        auto& node = nodes[j];
+                        std::string name = extract_task_name(node->task->name);
+                        out << "      \"" << name << "\";\n";
+                    }
+
+                    // Emit edges
+                    for (auto& node : nodes)
+                    {
+                        std::string from = extract_task_name(node->task->name);
+                        for (auto& dep : node->dependents)
+                        {
+                            std::string to = extract_task_name(dep->task->name);
+                            out << "      \"" << from << "\" -> \"" << to << "\";\n";
+                        }
+                    }
+
+                    out << "    }\n"; // end schedule cluster
+                }
+                out << "node [style=filled, color=white];\n";
+                out << "    \""<< i << "_invis\"[shape = point style = invis]\n";
+                out << "}\n";
+
+                if (prev_idx < 0)
+                    out << "start -> \"" << i << "_invis\"  [XXXXXxlabel=\"\\E\", style=\"solid\" minlen=2 ltail=cluster_A1 lhead=cluster_"<< i <<" ] \n";
+                else
+                    out << "\"" << prev_idx << "_invis" << "\" -> \"" << i << "_invis\"  [XXXXXxlabel=\"\\E\", style=\"solid\" minlen=3 ltail=cluster_" << prev_idx << " lhead=cluster_" << i << " ] \n";
+
+                prev_idx = i;
+            }
+
+            out << "  start [shape=Mdiamond];\n";
+            out << "}\n";
+        }
+    }
+
+
 }
