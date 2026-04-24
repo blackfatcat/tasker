@@ -23,22 +23,22 @@ build.bat uses: "Visual Studio 18 2026" ‼️ Requires latest CMake ‼️
 ## 🚀 Core Features
 
 * [x] Can scale to the number of cores for the current system. Or explicitly choose the number of threads (workers) to spawn and their task capacity
-##### Example:
+#### Example:
 ```cpp
 #include "tasker.hpp"
 int main()
 {
     uint8_t worker_count = 32;
     size_t task_capacity_per_worker = 1024;
-    tskr::Tasker tasker(worker_count, task_capacity_per_worker);
 
     // Note: Default constructor parameters are std::thread::hardware_concurrency() and 256
+    tskr::Tasker tasker(worker_count, task_capacity_per_worker);
 }
 ```
 ---
-* [x] Schedule-based execution: Tasks are grouped in user-defined schedules. The order that they are registerd in the system in will be the order they will also be executed in. Schedules are executed one after the other unless specified otherwise and grouped together in a Parallel schedule set.
+* [x] Schedule-based execution: Tasks are grouped in user-defined schedules. The order that they are registerd in the system will be the order they will also be executed in. Schedules are executed one after the other unless specified otherwise and grouped together in a `Parallel<>` schedule set.
 
-##### Example:
+#### Example:
 ```cpp
 #include "tasker.hpp"
 
@@ -50,16 +50,19 @@ int main()
 {
     tskr::Tasker tasker;
 
-    tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)                // Startup schedule that will execute once
-        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat)   // Main and Render schedules that will run in parallel on-repeat
-        .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single);                // Shutdown schedule that will execute once
+    // Startup schedule that will execute once
+    tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)      
+        // Main and Render schedules that will run in parallel on-repeat          
+        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat) 
+        // Shutdown schedule that will execute once
+        .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single);
 }
 ```
 ---
 * [x] Schedules can also have affinity towards a specific core/worker and/or a maximum number of cores the tasks within can run on.
 ‼️If max cores is greater than the mask's prefered core count, then the mask takes precedence and limits the max cores to the count of the prefered ones. ‼️
 
-##### Example:
+#### Example:
 ```cpp
 #include "tasker.hpp"
 
@@ -72,14 +75,15 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
-        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat, 2, 0b0011)   // Main and Render schedules that will run in parallel on-repeat on the 0th and 1st cores
+        // Main and Render schedules that will run in parallel on-repeat on the 0th and 1st cores
+        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat, 2, 0b0011) 
         .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single);
 }
 ```
 ---
 * [x] Supports static & dynamic tasks
     * [x] Static Tasks - defined before execution; tied to a specific system/schedule at compile time. 
-##### Example:
+#### Example:
 ```cpp
 #include "tasker.hpp"
 
@@ -100,16 +104,17 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
-        .add_tasks<Startup>(tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}); // Add the two functions to the Startup schedule to be executed in parallel
+        // Add the two functions to the Startup schedule to be executed in parallel
+        .add_tasks<Startup>(tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{});
 
     // To run the graph simply:
     tasker.run();
     // Or chain it above to calls to add_task/add_schedule
 }
 ```
-    * [x] Dynamic Tasks - not know in advance; can be ran at any* point, by any* other task in any* schedule
-
-##### Example:
+---
+    * [x] Dynamic Tasks - not know in advance; can be ran at any point, by any other task in any schedule
+#### Example:
 ```cpp
 #include "tasker.hpp"
 
@@ -141,14 +146,14 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
-        .add_tasks<Startup>(tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}); // Add the two functions to the Startup schedule to be executed in parallel
+        .add_tasks<Startup>(tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{});
 
     tasker.run();
 }
 ```
 ---
 * [x] Task dependencies - tasks can have two levels of scheduling: *Schedule to Schedule* (tasks defined in one shcedule set will be executed before tasks from the next schedule set); *Task to Task* (task within a schedule can be scheduled before or after other tasks).
-##### Example:
+#### Example:
 ```cpp
 #include "tasker.hpp"
 
@@ -171,14 +176,16 @@ int main()
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
     tasker.add_schedules<Shutdown>(tskr::ExecutionPolicy::Single)
-        .add_tasks<Startup>(tskr::TaskFn<task2>{}.after(tskr::TaskFn<task1>{})) // task2 will be executed after task1
-        .add_tasks<Startup>(tskr::TaskFn<task2>{}.before(tskr::TaskFn<task1>{})); // task2 will be executed before task1
+        // task2 will be executed after task1
+        .add_tasks<Startup>(tskr::TaskFn<task2>{}.after(tskr::TaskFn<task1>{}))
+        // task2 will be executed before task1
+        .add_tasks<Startup>(tskr::TaskFn<task2>{}.before(tskr::TaskFn<task1>{}));
     tasker.run();
 }
 ```
 ---
 * [x] Task sets - In addition to ordering tasks one by one, one can define a set of tasks and order it with another set of tasks
-##### Example:
+#### Example:
 ```cpp
 #include "tasker.hpp"
 
@@ -209,7 +216,8 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
-        .add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}).after(tskr::TaskFn<task3>{}, tskr::TaskFn<task4>{})) // task3 and task4 will run both in parallel before task1 and task2 are ran (also in parallel)
+        // task3 and task4 will run both in parallel before task1 and task2 are ran (also in parallel)
+        .add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}).after(tskr::TaskFn<task3>{}, tskr::TaskFn<task4>{})) 
     tasker.run();
 }
 ```
@@ -217,7 +225,7 @@ int main()
 * [x] Resources - Tasks can query for resources with their parameters. Resources can be custom types that are registered and initialized at the beginning of the program or engine-defined types (`Commands`, `Resource<ScheduleInfo>`, `Resource<Running>`, `Resource<Repeating<Schedule>>` currently, but will expand soon... TODO: add a link to a list of all and their use).
 
 ‼️Currently, tasks are not rescheduled according to resource access and mutability (but soonTM!), so it is greatly recommended to pay close attention to data access and ordering of the tasks within a schedule ‼️
-##### Example:
+#### Example:
 ```cpp
 #include "tasker.hpp"
 #include <iostream>
@@ -225,6 +233,7 @@ int main()
 struct Startup {};
 
 struct CustomResource {
+    CustomResource(int _counter) : counter(_counter) {}
     int counter = 0;
 }
 
@@ -244,16 +253,19 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
+        // Register the custom resource
+        .register_resource(CustomResource(5))
+        // Tasks can now querry it as Resource<CustomResource> parameter
         .add_tasks<Startup>(tskr::TaskFn<task2>{}.after(tskr::TaskFn<task1>{}))
     tasker.run();
 }
 ```
 ---
-* [x] Can print the current task graph either to the console or in a .dot format to a file with `tasker.print_graph("optional_file_path.dot")`
-##### Example of the graph produced by the simple.cpp example: ![GraphViz visualization of the .dot file printed](https://github.com/blackfatcat/tasker/graphviz.png)
+* [x] Supports printing the current task graph either to the console or in a .dot format to a file with `tasker.print_graph("optional_file_path.dot")`
+#### Example of the graph produced by the simple.cpp example: ![GraphViz visualization of the .dot file printed](https://github.com/blackfatcat/tasker/graphviz.png)
 ---
 * [ ] MT Gen of cmd bufs
-##### Example: 
+#### Example: 
 ---
 * [x] Utilizes lock-free task queus
     * [Correct and Efficient Work-Stealing for Weak Memory Models](https://fzn.fr/readings/ppopp13.pdf)
