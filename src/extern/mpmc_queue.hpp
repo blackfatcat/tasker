@@ -25,7 +25,6 @@ SOFTWARE.
 #ifdef TASKER_LINUX
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wno-interference-size"
-#pragma clang diagnostic ignored "-Winterference-size"
 #endif
 
 #include <atomic>
