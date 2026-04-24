@@ -81,8 +81,7 @@ int main()
 }
 ```
 ---
-* [x] Supports static & dynamic tasks
-    * [x] Static Tasks - defined before execution; tied to a specific system/schedule at compile time. 
+* [x] Static Tasks - defined before execution; tied to a specific system/schedule at compile time. 
 #### Example:
 ```cpp
 #include "tasker.hpp"
@@ -113,7 +112,7 @@ int main()
 }
 ```
 ---
-    * [x] Dynamic Tasks - not know in advance; can be ran at any point, by any other task in any schedule
+* [x] Dynamic Tasks - not know in advance; can be ran at any point, by any other task in any schedule
 #### Example:
 ```cpp
 #include "tasker.hpp"
