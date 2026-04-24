@@ -1,7 +1,7 @@
 # tasker
 A C++ task scheduler designed for static and dynamic tasks
 
-A high‑performance, lock‑free task scheduler built with modern C++ (C++11–C++20).  
+A high‑performance, lock‑free task scheduler built with modern C++20.  
 Designed for scalability, low latency, and real‑world multithreaded workloads such as game engines, image processing, and command buffer generation.
 
 ---
