@@ -1,7 +1,5 @@
 #include "worker_pool.hpp"
 
-#include <chrono>
-
 #ifdef TASKER_WINDOWS
 
 #define VC_EXTRALEAN
