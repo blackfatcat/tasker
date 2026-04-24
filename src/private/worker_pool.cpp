@@ -120,7 +120,18 @@ namespace tskr
         }
     }
 
-    void WorkerPool::worker_loop(int worker_id)
+    static bool worker_can_run(ScheduleInfo& info, uint8_t worker_id)
+    {
+        if ((info.affinity_mask & (1ull << (size_t)worker_id)) == 0)
+            return false;
+
+        if (info.max_cores != 0 && info.active_workers->load(std::memory_order_acquire) >= info.max_cores)
+            return false;
+
+        return true;
+    }
+
+    void WorkerPool::worker_loop(uint8_t worker_id)
     {
         auto& local_queue = m_LocalQueues[worker_id];
 
@@ -133,7 +144,7 @@ namespace tskr
             if (!local_queue->try_pop(task_node))
             {
                 // Try stealing from other workers
-                for (size_t i = 0; i < m_ThreadCount && !task_node; i++)
+                for (uint8_t i = 0; i < m_ThreadCount && !task_node; i++)
                 {
                     if (i == worker_id) continue;
                     m_LocalQueues[i]->try_steal(task_node);
@@ -153,8 +164,21 @@ namespace tskr
 
             if (task_node->deps_remaining.load(std::memory_order_acquire) <= 0)
             {
+                // TODO: Figure out a way to safely access the store within task->payload from here and get the schedule info resource
+
+                ScheduleInfo& schedule_info = task_node->task->schedule_info;
+
+                // Check affinity and number of workers active
+                if (!worker_can_run(schedule_info, worker_id))
+                {
+                    enqueue(task_node, false);
+                    continue;
+                }
+
+                schedule_info.active_workers->fetch_add(1, std::memory_order_release);
                 task_node->task->fun(task_node->task->payload);
-                 
+                schedule_info.active_workers->fetch_sub(1, std::memory_order_release);
+
                 for (auto& dependent : task_node->dependents)
                     dependent->deps_remaining.fetch_sub(1, std::memory_order_release);
 

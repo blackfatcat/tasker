@@ -23,13 +23,14 @@ namespace tskr
         template<typename Fn>
         void spawn(Fn f)
         {
+            ScheduleInfo info = m_Resources->get_ref<ScheduleInfo>();
             switch (Fn::task_type)
             {
             case TaskSpawnType::Standalone:
-                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources), false);
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources, info), false);
                 break;
             case TaskSpawnType::Scheduled:
-                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources), true);
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources, info), true);
                 break;
             default:
                 break;

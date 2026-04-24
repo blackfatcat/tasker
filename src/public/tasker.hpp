@@ -19,6 +19,7 @@ namespace tskr
         std::unordered_map<KEY_TYPE, std::pair<ScheduleInfo, std::vector<std::shared_ptr<TaskNode>>>> m_TasksPerSchedule;
         std::shared_ptr<WorkerPool> m_Workers;
 
+        // TODO: Move this to per-schedule instance + sync betweem non-parallel schedules
         std::shared_ptr<ResourceStore> m_Resources;
 
         std::atomic_bool m_Running{ true };
@@ -32,14 +33,14 @@ namespace tskr
         /// unless preceeded with Parallel<> in which case the schedules inside it will all be ran together
         /// @return reference to self for chaining
         template<typename ...Schedules>
-        Tasker& add_schedules(ExecutionPolicy policy) 
+        Tasker& add_schedules(ExecutionPolicy policy, size_t affinity_mask = 0xFFFFFFFFFFFFFFFF, uint16_t max_cores = 0)
         {
             m_ScheduleHashes.reserve(sizeof...(Schedules));
             m_TasksPerSchedule.reserve(sizeof...(Schedules));
 
             // Gets the hash of each schedule and inserts it into the vector through fold magic
             // Unfolds any nested declaration like Parallel<>
-            (process_schedule_types<Schedules>(policy), ...);
+            (process_schedule_types<Schedules>(policy, affinity_mask, max_cores), ...);
 
             return *this;
         }
@@ -56,11 +57,13 @@ namespace tskr
             KEY_TYPE schedule_id = typeid(Schedule).accessor();
             assert(m_TasksPerSchedule.contains(schedule_id) && "Schedule deos not exist. Add it first with add_schedules.");
 
+            ScheduleInfo& schedule_info = m_TasksPerSchedule.at(schedule_id).first;
+
             using tasks_ts = typename TaskConfig<Tasks...>::tasks_t;
             using after_ts = typename TaskConfig<Tasks...>::after_t;
             using before_ts = typename TaskConfig<Tasks...>::before_t;
 
-            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks, m_Resources);
+            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks, m_Resources, schedule_info);
 
             std::vector<std::shared_ptr<TaskNode>>& task_nodes = m_TasksPerSchedule.at(schedule_id).second;
 
@@ -100,7 +103,7 @@ namespace tskr
 
     private:
         template <typename T>
-        void process_schedule_types(ExecutionPolicy policy)
+        void process_schedule_types(ExecutionPolicy policy, size_t affinity_mask, uint16_t max_cores)
         {
             std::vector<KEY_TYPE> par_schedules{};
             std::shared_ptr<std::atomic_bool> repeating = std::make_shared<std::atomic_bool>(false);
@@ -109,14 +112,14 @@ namespace tskr
             if constexpr (impl::is_parallel<T>::value)
             {
                 // T is Parallel<A,B,C>
-                std::apply([this, &par_schedules, policy, &repeating](auto... inner) {
+                std::apply([this, &par_schedules, policy, &repeating, affinity_mask, max_cores](auto... inner) {
                     (par_schedules.push_back(typeid(inner).accessor()), ...);
                     
                     if (policy == ExecutionPolicy::Repeat)
                         repeating->store(true, std::memory_order_relaxed);
                     
                     (m_Resources->insert(Repeating<decltype(inner)>(repeating)), ...);
-                    (m_TasksPerSchedule.emplace(typeid(inner).accessor(), std::make_pair(ScheduleInfo(policy, repeating), std::vector<std::shared_ptr<TaskNode>>{})), ...);
+                    (m_TasksPerSchedule.emplace(typeid(inner).accessor(), std::make_pair(ScheduleInfo(policy, repeating, typeid(inner).name(), affinity_mask, max_cores), std::vector<std::shared_ptr<TaskNode>>{})), ...);
                 }, typename impl::parallel_inner<T>::types{});
             }
             else
@@ -128,7 +131,7 @@ namespace tskr
                     repeating->store(true, std::memory_order_relaxed);
                 
                 m_Resources->insert(Repeating<T>(repeating));
-                m_TasksPerSchedule.emplace(typeid(T).accessor(), std::make_pair(ScheduleInfo(policy, repeating), std::vector<std::shared_ptr<TaskNode>>{}));
+                m_TasksPerSchedule.emplace(typeid(T).accessor(), std::make_pair(ScheduleInfo(policy, repeating, typeid(T).name(), affinity_mask, max_cores), std::vector<std::shared_ptr<TaskNode>>{}));
             }
             m_ScheduleHashes.push_back(par_schedules);
         }

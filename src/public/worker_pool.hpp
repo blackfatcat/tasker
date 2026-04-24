@@ -53,7 +53,7 @@ namespace tskr
         void add_task_count(size_t new_count);
 
     private:
-        void worker_loop(int worker_id);
+        void worker_loop(uint8_t worker_id);
     };
     
 } // namespace tskr
