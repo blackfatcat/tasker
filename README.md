@@ -263,8 +263,16 @@ int main()
 * [x] Supports printing the current task graph either to the console or in a .dot format to a file with `tasker.print_graph("optional_file_path.dot")`
 #### Example of the graph produced by the simple.cpp example: ![GraphViz visualization of the .dot file printed](https://github.com/blackfatcat/tasker/blob/main/graphviz.png)
 ---
-* [ ] MT Gen of cmd bufs
-#### Example: 
+* [ ] MT Gen of cmd bufs - WIP
+Can be seen here: [Multi-threaded Command Buffer generation with DX12](https://github.com/blackfatcat/tasker/tree/main/examples/dx3d_cmds.cpp)
+---
+* [x] Image Processing - an example of a graph that does grayscale, blur and sobel processing on an image can be seen here: [image processing example](https://github.com/blackfatcat/tasker/tree/main/examples/image_processing.cpp). It applies grayscale then in parallel does the sobel and blur.
+
+‼️NOTE: If you'd like to try it for yourself, you have to edit the path in the Settings resource to the full path of the image you'd like to apply the post processing to. Then it will generate 3 images either in the build folder or in the bin folder, depending on where you ran the program from.‼️
+
+Graph:
+
+![GraphViz visualization of the .dot file printed of the post process example](https://github.com/blackfatcat/tasker/blob/main/post_process_graph.png)
 ---
 * [x] Utilizes lock-free task queus
     * [Correct and Efficient Work-Stealing for Weak Memory Models](https://fzn.fr/readings/ppopp13.pdf)
