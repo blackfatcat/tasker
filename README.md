@@ -261,7 +261,7 @@ int main()
 ```
 ---
 * [x] Supports printing the current task graph either to the console or in a .dot format to a file with `tasker.print_graph("optional_file_path.dot")`
-#### Example of the graph produced by the simple.cpp example: ![GraphViz visualization of the .dot file printed](https://github.com/blackfatcat/tasker/graphviz.png)
+#### Example of the graph produced by the simple.cpp example: ![GraphViz visualization of the .dot file printed](https://github.com/blackfatcat/tasker/blob/main/graphviz.png)
 ---
 * [ ] MT Gen of cmd bufs
 #### Example: 
