@@ -84,9 +84,9 @@ target_include_directories(${PROJECT_NAME}
 )
 
 # CMake seems to complain on older versions if the variable is defined as an empty string,
-# seeing the COMPARE below with only 4 arguments
+# seeing the NOTEQUAL below with only 4 arguments
 SET(TSKR_BUILD_EXAMPLE "temp" CACHE STRING "example")
-string(COMPARE GREATER ${TSKR_BUILD_EXAMPLE} "" example_defined)
+string(COMPARE NOTEQUAL ${TSKR_BUILD_EXAMPLE} "temp" example_defined)
 
 # Build Examples
 if(${TSKR_BUILD_EXAMPLES_ALL})
