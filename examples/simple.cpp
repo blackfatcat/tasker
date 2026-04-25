@@ -28,32 +28,19 @@ struct VecRes
 
 void task_inner()
 {
-    std::cout << "Inner "<< std::endl;
+    std::cout << "Inner"<< std::endl;
 }
 
-void task1(tskr::Commands commands, tskr::Resource<tskr::ScheduleInfo> info)
+void task1(tskr::Commands commands)
 {
     commands.spawn(tskr::TaskFn<task_inner, tskr::TaskSpawnType::Standalone>{});
 
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
-
+    std::cout << "Start" << std::endl;
     done1.store(true, std::memory_order_release);
 }
 
 void task2()
 {
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
-
     done2.store(true, std::memory_order_release);
 }
 
@@ -62,13 +49,6 @@ void task3(tskr::Resource<VecRes> vec_res)
     assert(done1.load(std::memory_order_acquire) && done2.load(std::memory_order_acquire));
 
     vec_res->vec.push_back(7);
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
-    
     done3.store(true, std::memory_order_release);
 }
 
@@ -85,24 +65,12 @@ void task4(tskr::Resource<VecRes> vec_res)
 void task5()
 {
     assert(done1.load(std::memory_order_acquire) && done2.load(std::memory_order_acquire));
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
     done5.store(true, std::memory_order_release);
 }
 
 void task6()
 {
     assert(done1.load(std::memory_order_acquire) && done2.load(std::memory_order_acquire));
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
     done6.store(true, std::memory_order_release);
 }
 
@@ -115,65 +83,30 @@ void task7(
     // Stops Main and Render from repeating, terminating the program
     main_schedule_repeating->stop();
 
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
     done7.store(true, std::memory_order_release);
 }
 
 void task8()
 {
     assert(done5.load(std::memory_order_acquire) && done6.load(std::memory_order_acquire) && done7.load(std::memory_order_acquire));
-
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
     done8.store(true, std::memory_order_release);
 }
 
 void task9()
 {
     assert(done5.load(std::memory_order_acquire) && done6.load(std::memory_order_acquire) && done7.load(std::memory_order_acquire));
-
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
     done9.store(true, std::memory_order_release);
 }
 
 void task10()
 {
     assert(done5.load(std::memory_order_acquire) && done6.load(std::memory_order_acquire) && done7.load(std::memory_order_acquire));
-
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
     done10.store(true, std::memory_order_release);
 }
 
 void task11()
 {
     assert(done8.load(std::memory_order_acquire) && done9.load(std::memory_order_acquire) && done10.load(std::memory_order_acquire));
-
-    const std::vector<int>& in{ 1,2,3,4,5,6 };
-    int total = 0;
-    for (const auto& i : in)
-    {
-        total += i;
-    }
-
     std::cout << "Done" << std::endl;
 }
 
