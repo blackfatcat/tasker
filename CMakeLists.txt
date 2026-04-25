@@ -137,6 +137,11 @@ if(${TSKR_BUILD_EXAMPLES_ALL})
         elseif(NOT ${is_dx3d})
             add_executable(${example_name} ${example})
             target_link_libraries(${example_name} PRIVATE ${PROJECT_NAME})
+
+            target_include_directories(${example_name}
+                PUBLIC
+                    examples/extern
+            )
         endif()
     endforeach()
 elseif(example_defined)
@@ -172,4 +177,9 @@ elseif(example_defined)
             WIN32_LEAN_AND_MEAN
         )
     endif()
+
+    target_include_directories(${example_name}
+        PUBLIC
+            examples/extern
+    )
 endif()
