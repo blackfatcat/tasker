@@ -33,6 +33,7 @@ namespace tskr
         while (m_Resources->get<Running>()->is_running() && repeating)
         {
             repeating = false;
+            size_t first_repeating_idx = -1;
             //for (auto& schedule_set : m_ScheduleHashes)
             for (size_t schedule_set_idx = 0; schedule_set_idx < m_ScheduleHashes.size();)
             {
@@ -49,7 +50,7 @@ namespace tskr
                     repeating = tasks.first.repeating->load(std::memory_order_relaxed);
 
                     // Tasks are running already, so this atomic add will prevent the scenario where a task is executed,
-                    // decreasing the counter to 0 and falsly signalling that there are no more left when the rest have just not been enqueued
+                    // decreasing the counter to 0 and falsеly signalling that there are no more left when the rest have just not been enqueued
                     m_Workers->add_task_count(tasks.second.size());
                     for (auto& task : tasks.second)
                     {
@@ -58,7 +59,8 @@ namespace tskr
                 }
                 m_Workers->wait_for_all();
 
-                // Did repeat status changed from any of the tasks?
+                // Repeat status changed from within the schedule set?
+                // Prevents executing the set twice if Repeating was stopped from within
                 for (auto& schedule : schedule_set)
                 {
                     std::pair<ScheduleInfo, std::vector<std::shared_ptr<TaskNode>>>& tasks = m_TasksPerSchedule[schedule];
@@ -66,10 +68,26 @@ namespace tskr
                 }
 
                 // Keep repeating the schedule set that's registered with tskr::ExecutionPolicy::Repeat
-                if (repeating)
-                    schedule_set_idx -= 1;
+                if (repeating && first_repeating_idx == -1)
+                    first_repeating_idx = schedule_set_idx;
 
-                schedule_set_idx++;
+                // No more repeating schedules aftre the last one?
+                if (repeating && schedule_set_idx < m_ScheduleHashes.size() && !m_TasksPerSchedule[m_ScheduleHashes[schedule_set_idx][0]].first.repeating->load(std::memory_order_acquire))
+                {
+                    schedule_set_idx++;
+                    schedule_set_idx = first_repeating_idx; // Repeat the set
+                }
+
+                // Repeat status changed, but the next one is repeating
+                else if (!repeating && schedule_set_idx < m_ScheduleHashes.size() && m_TasksPerSchedule[m_ScheduleHashes[schedule_set_idx][0]].first.repeating->load(std::memory_order_acquire))
+                {
+                    schedule_set_idx++;
+                    first_repeating_idx = -1;
+                    repeating = true;
+                }
+
+                if (!repeating)
+                    schedule_set_idx++;
             }
 
             // Have any of the schedules' repeat status changed?
