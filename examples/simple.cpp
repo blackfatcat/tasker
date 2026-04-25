@@ -6,6 +6,7 @@
 struct Startup {};
 struct Main {};
 struct Render {};
+struct Sync {};
 struct Shutdown {};
 
 using tskr::Parallel;
@@ -25,6 +26,13 @@ struct VecRes
 {
     std::vector<int> vec{ 1,2,3,4,5,6 };
 };
+
+void sync()
+{
+    assert(done5.load(std::memory_order_acquire) && done6.load(std::memory_order_acquire) && done7.load(std::memory_order_acquire));
+    std::cout << "Sync" << std::endl;
+    done1.store(true, std::memory_order_release);
+}
 
 void task_inner()
 {
@@ -75,13 +83,15 @@ void task6()
 }
 
 void task7(
-    tskr::Resource<tskr::Repeating<Main>> main_schedule_repeating
+    tskr::Resource<tskr::Repeating<Main>> main_schedule_repeating,
+    tskr::Resource<tskr::Repeating<Sync>> sync_schedule_repeating
 )
 {
     assert(done1.load(std::memory_order_acquire) && done2.load(std::memory_order_acquire));
 
     // Stops Main and Render from repeating, terminating the program
     main_schedule_repeating->stop();
+    sync_schedule_repeating->stop();
 
     done7.store(true, std::memory_order_release);
 }
@@ -115,11 +125,12 @@ int main()
     tskr::Tasker tasker;
 
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
-        .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat, 4, 0b0011)
+        .add_schedules<Parallel<Main, Render>, Sync>(tskr::ExecutionPolicy::Repeat, 4, 0b0011)
         .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single)
         .add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}))
         .add_tasks<Main>(tskr::TaskFn<task4>{}.after(tskr::TaskFn<task3>{}))
         .add_tasks<Render>((tskr::TaskFn<task6>{}, tskr::TaskFn<task7>{}).after(tskr::TaskFn<task5>{}))
+        .add_tasks<Sync>(tskr::TaskFn<sync>{})
         .add_tasks<Shutdown>((tskr::TaskFn<task8>{}, tskr::TaskFn<task9>{}, tskr::TaskFn<task10>{}).before(tskr::TaskFn<task11>{}))
         .register_resource(VecRes{})
         .run();
