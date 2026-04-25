@@ -264,7 +264,9 @@ int main()
 #### Example of the graph produced by the simple.cpp example: ![GraphViz visualization of the .dot file printed](https://github.com/blackfatcat/tasker/blob/main/graphviz.png)
 ---
 * [ ] MT Gen of cmd bufs
-#### Example: 
+#### Example: WIP but can be seen in the examples
+---
+* [x] Image Processing - an example of a graph that does grayscale, blur and sobel processing on an image can be seen here: [image processing example](https://github.com/blackfatcat/tasker/tree/main/examples/image_processing.cpp). It applies grayscale then in parallel does the sobel and blur.
 ---
 * [x] Utilizes lock-free task queus
     * [Correct and Efficient Work-Stealing for Weak Memory Models](https://fzn.fr/readings/ppopp13.pdf)
