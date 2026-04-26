@@ -13,7 +13,7 @@ namespace tskr
 
         // Insert common resources
         m_Resources->insert(Running{});
-        m_Resources->insert(Commands(m_Workers, m_Resources));
+        m_Resources->insert(Commands(m_Workers, &m_Resources));
         m_Resources->insert(ScheduleInfo{});
     }
 

@@ -14,23 +14,25 @@ namespace tskr
     {
     private:
         std::shared_ptr<WorkerPool> m_WorkerPool;
-        std::shared_ptr<ResourceStore> m_Resources;
+
+        // TODO: This really needs to get out of here...
+        std::shared_ptr<ResourceStore>* m_Resources;
     public:
-        Commands() {}
-        Commands(std::shared_ptr<WorkerPool> pool, std::shared_ptr<ResourceStore> resources);
+        Commands() : m_Resources(nullptr) {}
+        Commands(std::shared_ptr<WorkerPool> pool, std::shared_ptr<ResourceStore>* resources);
         ~Commands();
 
         template<typename Fn>
         void spawn(Fn f)
         {
-            ScheduleInfo info = m_Resources->get_ref<ScheduleInfo>();
+            ScheduleInfo info = (*m_Resources)->get_ref<ScheduleInfo>();
             switch (Fn::task_type)
             {
             case TaskSpawnType::Standalone:
-                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources, info), false);
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, *m_Resources, info), false);
                 break;
             case TaskSpawnType::Scheduled:
-                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_Resources, info), true);
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, *m_Resources, info), true);
                 break;
             default:
                 break;
@@ -42,7 +44,7 @@ namespace tskr
     template<>
     struct ParamFetcher<Commands>
     {
-        static Commands& fetch(std::shared_ptr<ResourceStore> store)
+        static Commands& fetch(std::shared_ptr<ResourceStore> store, int)
         {
             return store->get_ref<Commands>();
         }
