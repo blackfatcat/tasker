@@ -84,6 +84,10 @@ namespace tskr
             return *this;
         }
 
+        /// @brief 
+        /// Register a custom resource that can then be querried from within a task by having a Resource<CustomRes> parameter
+        /// @param resource resource object to be moved into the resource store
+        /// @return reference to self for chaining
         template<typename T>
         Tasker& register_resource(T&& resource)
         {
@@ -110,7 +114,6 @@ namespace tskr
             std::vector<KEY_TYPE> par_schedules{};
             std::shared_ptr<std::atomic_bool> repeating = std::make_shared<std::atomic_bool>(false);
 
-            // TODO: Run these in parallel
             if constexpr (impl::is_parallel<T>::value)
             {
                 // T is Parallel<A,B,C>

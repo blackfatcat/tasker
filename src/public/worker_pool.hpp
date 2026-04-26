@@ -26,12 +26,11 @@ namespace tskr
         std::atomic<bool> m_Shutdown{ false };
         uint8_t m_ThreadCount;
     public:
-        // TODO: Add affinity mask
         WorkerPool(uint8_t thread_count, size_t per_worker_cap);
         ~WorkerPool();
 
         /// @brief Add a task to be executed
-        /// @brief Note: if a worker thread adds it, will be added directly to its own worker queue <br>
+        /// @brief Note: if a worker thread adds it, will be added directly to its own worker queue
         /// @brief Note: if a non-worker thread adds it (the main thread), will be added to the global queue for any* thread to grab
         /// @param tracked Should the task counter be increased when adding this task
         void enqueue(std::shared_ptr<TaskNode> task, bool increase_task_counter = true);
@@ -43,7 +42,7 @@ namespace tskr
         void wait_for_all();
 
         /// @brief Checks if there are any tasks still running
-        /// @return `true` if no tasks remain, false otherwise
+        /// @return `true` if no tasks remain, `false` otherwise
         bool try_wait_for_all();
 
         /// @brief Stop the worker loops and join all worker threads

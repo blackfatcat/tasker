@@ -32,7 +32,7 @@ namespace tskr
         };
     }
 
-    /// Determines how the task should be ran
+    /// @brief Determines how the task should be ran
     enum class TaskSpawnType : uint8_t
     {
         Scheduled,  // Task will be added to the current schedule and waited on

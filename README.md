@@ -288,6 +288,7 @@ Graph:
 * [ ] Cleaner API - allow passing of just functions and less repetition of tskr::Type::sth everywhere
 * [ ] Extend the examples - d3d example, webgpu example, more?
 * [ ] Easier compile-time foreach for spawned tasks within a task (see save_outputs() within the image processing example)
+* [ ] Extend ParamFetcher with other ways of fetching params with a Context struct that contains all of them
 
 ## ❌ Known issues
 

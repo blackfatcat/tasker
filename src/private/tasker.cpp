@@ -24,7 +24,6 @@ namespace tskr
 
 	void Tasker::run()
     {
-        // TODO: Pass in resources
         m_Workers->work();
 
         bool repeating = true;
