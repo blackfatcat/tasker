@@ -51,6 +51,7 @@ namespace tskr
             (f(std::get<I>(t)), ...);
         }
 
+        // apply a function over each member of a tuple
         template<typename Tuple, typename F>
         void for_each_in_tuple(Tuple&& t, F&& f)
         {
@@ -70,6 +71,8 @@ namespace tskr
         const char* name;
         std::atomic<int> deps{ 0 };
         TaskSpawnType spawn_type = TaskSpawnType::Scheduled;
+
+        // TODO: Get rid of this once it's safe to change it on the main thread and query it on another
         ScheduleInfo schedule_info;
     };
 
@@ -124,6 +127,8 @@ namespace tskr
 
     /// @brief Helper wrapper around Resource types,
     /// used to unpack and inject resources from the resource map into tasks
+    /// Can be specialized to allow custom access to user-defined resources
+    /// TODO: Pass in a context struct (that has the store, index and whatever else needed, instead of passing in individual params and changing the signature everywhere)
     template<typename Param>
     struct ParamFetcher;
 
@@ -148,7 +153,7 @@ namespace tskr
     /// @brief 
     /// A compile-time info carrier for either a free function, callable object or a member function.
     /// tparam Fn Funtion pointer to the function to be executed
-    /// tparam TaskType the spawn type of the task - Schedueld or Standalone
+    /// tparam TaskType optional spawn type of the task - Schedueld (waited on for shcedule completion) or Standalone (not waited on)
     /// tparam Index optional int param that can be passed in on construction (useful for indexing into resources)
     template<auto Fn, TaskSpawnType TaskType = TaskSpawnType::Scheduled, int Index = 0>
     struct TaskFn
@@ -173,6 +178,7 @@ namespace tskr
             }
         }
 
+        // TaskFn -> Task object
         static std::unique_ptr<Task> make_task(std::shared_ptr<ResourceStore>& store, ScheduleInfo schedule_info)
         {
             auto t = std::make_unique<Task>();
@@ -301,6 +307,8 @@ constexpr auto operator,(A, B)
     return tskr::TaskConfigBase<A, B>{};
 }
 
+/// @brief
+/// Syntax sugar so that `(TaskFn<fun1>, TaskFn<fun2>, TaskFn<fun3>, ... )` returns a TaskConfig for chaining before and after calls
 template<typename... Ts, auto U, tskr::TaskSpawnType SpawnType, int Index>
 constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U, SpawnType, Index>) {
     using tasks_from_cfg = tskr::TaskConfig<Ts...>::tasks_t;
@@ -312,6 +320,8 @@ constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U, SpawnType, Ind
     return tskr::TaskConfig<merged_ts, std::tuple<>, std::tuple<>>{};
 }
 
+/// @brief
+/// Syntax sugar so that `(TaskFn<fun1>, TaskFn<fun2>, ...), (TaskFn<fun3>, TaskFn<fun4>,...) )` returns a TaskConfig for chaining before and after calls
 template<typename... As, typename... Bs>
 constexpr auto operator,(tskr::TaskConfig<As...>, tskr::TaskConfig<Bs...>) {
     using tasks_from_cfg_a = tskr::TaskConfig<As...>::tasks_t;

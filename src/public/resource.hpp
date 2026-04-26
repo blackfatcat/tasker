@@ -25,12 +25,17 @@ namespace tskr
     class ResourceStore
     {
     public:
+        /// @brief 
+        /// Inserts or assigns the passed in value to a slot pointed to by the value's type hash
         template<typename T>
         void insert(T&& value)
         {
             m_ResourceMap.insert_or_assign(typeid(T).hash_code(), std::make_unique<std::any>(std::move(value)));
         }
 
+        /// @brief 
+        /// @tparam T type of the resource to query from the map
+        /// @return Resource<T> wrapped resource
         template<typename T>
         Resource<T> get()
         {
@@ -41,6 +46,9 @@ namespace tskr
             return Resource(ref);
         }
 
+        /// @brief 
+        /// @tparam T type of the resource to query from the map
+        /// @return T& reference to the resource
         template<typename T>
         T& get_ref()
         {

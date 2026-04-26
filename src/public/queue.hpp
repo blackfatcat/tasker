@@ -6,7 +6,8 @@
 
 namespace tskr
 {
-    // Push and Pop to and from the back. Steal from the front. Chase-Lev style work-stealing double ended queue. Efficient for thread local queues.
+    // Chase-Lev style work-stealing double ended queue.
+    // Push and Pop to and from the back. Steal from the front. Efficient for thread local queues.
     // The algorithm holds only if push and pop are performed by the same thread.
     // Other threads can only call steal on the queue.
     template<typename T>

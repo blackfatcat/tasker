@@ -49,7 +49,7 @@ namespace tskr
         {
             // Worker thread called -> local push
             if (!m_LocalQueues[id]->try_push(task))
-                m_GlobalQueue.push(task); // Fall back to global if local is empty
+                m_GlobalQueue.push(task); // Fall back to global if local is full
         }
         else
         {
@@ -64,8 +64,7 @@ namespace tskr
             m_Workers.emplace_back([this, worker_id]() {
                 s_WorkerId = worker_id;
 
-                // Set affinity for each tread created. !! CURRENTLY each thread will like just one core (the one its created on)
-                // TODO: use affinity mask for multi-core affinities
+                // Set affinity for each tread created.
 #ifdef TASKER_WINDOWS
                 SetThreadAffinityMask(GetCurrentThread(), 1ull << worker_id);
 #endif
