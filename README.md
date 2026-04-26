@@ -50,11 +50,11 @@ int main()
 {
     tskr::Tasker tasker;
 
-    // Startup schedule that will execute once
+    // Startup schedule that will be executed first, one time
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)      
-        // Main and Render schedules that will run in parallel on-repeat          
+        // Main and Render schedules that will run after Startup in parallel, on-repeat          
         .add_schedules<Parallel<Main, Render>>(tskr::ExecutionPolicy::Repeat) 
-        // Shutdown schedule that will execute once
+        // Shutdown schedule that will execute last, just once
         .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single);
 }
 ```
