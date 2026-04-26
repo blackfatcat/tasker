@@ -124,15 +124,34 @@ int main()
 {
     tskr::Tasker tasker;
 
+    // Startup schedule executes first, just once
     tasker.add_schedules<Startup>(tskr::ExecutionPolicy::Single)
+
+        // Then follow Main and Render in Parallel and Sync after the two finish, the 3 of them repeating, until stopped
         .add_schedules<Parallel<Main, Render>, Sync>(tskr::ExecutionPolicy::Repeat, 4, 0b0011)
+
+        // Last comes Shutdown, once
         .add_schedules<Shutdown>(tskr::ExecutionPolicy::Single)
+
+        // task1 and 2 run in parallel during Startup
         .add_tasks<Startup>((tskr::TaskFn<task1>{}, tskr::TaskFn<task2>{}))
+
+        // task4 runs after task3 in Main
         .add_tasks<Main>(tskr::TaskFn<task4>{}.after(tskr::TaskFn<task3>{}))
+
+        // task6 and 7 run in parallel after 5 finishes in Render
         .add_tasks<Render>((tskr::TaskFn<task6>{}, tskr::TaskFn<task7>{}).after(tskr::TaskFn<task5>{}))
+
+        // task sync runs after both Main and Render have finished
         .add_tasks<Sync>(tskr::TaskFn<sync>{})
+
+        // task8, 9 and 10 run in parallel followed by 11 after all have finished
         .add_tasks<Shutdown>((tskr::TaskFn<task8>{}, tskr::TaskFn<task9>{}, tskr::TaskFn<task10>{}).before(tskr::TaskFn<task11>{}))
+
+        // Register a custom resource
         .register_resource(VecRes{})
+
+        // Run the graph
         .run();
 
     return 0;
