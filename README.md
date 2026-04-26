@@ -280,6 +280,15 @@ Graph:
 ---
 * [x] Task Stealing - utilizing the Chase-Lev work-stealing alogrithm for a queue, the workers are able to steal tasks from other workers' queues, making the scheduler more efficient with the inrease of load and cores.
 
+## Next steps
+
+* [ ] Each schedule has its own resource map
+* [ ] Built in sync from schedule to schedule + ability to selectively sync resources
+* [ ] Resource-aware scheduling - add ResoruceMut and based on mutability of the Resources passed to a task, order the parallel ones so no races can occur
+* [ ] Cleaner API - allow passing of just functions and less repetition of tskr::Type::sth everywhere
+* [ ] Extend the examples - d3d example, webgpu example, more?
+* [ ] Easier compile-time foreach for spawned tasks within a task (see save_outputs() within the image processing example)
+
 ## ❌ Known issues
 
 * [ ] Parallel schedules share the same resource store, making it highly inefficient to modify it from within their tasks. A possible solution could be to have a resource store per-schedule and sync them whenever desired (on a signal or a last schedule that extracts and syncs like Bevy does, I believe). For now the user has to manually sync data and make sure that there are no races between tasks by ordering them correctly.
