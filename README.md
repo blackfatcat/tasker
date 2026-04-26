@@ -281,7 +281,7 @@ Graph:
 * [x] Task Stealing - utilizing the Chase-Lev work-stealing alogrithm for a queue, the workers are able to steal tasks from other workers' queues, making the scheduler more efficient with the inrease of load and cores.
 
 ## Next steps
-
+* [ ] Lambdas as tasks - this might be a bit more convoluted, as lambdas require the function to be stored as a function object inside `TaskFn`. That would not 'just work' as `TaskFn` is made to be just type info and can be carried around and constructed correctly with just its type, which will not be preserved the moment anything needs to be stored inside as a member object... unless somehow introspection of the captured variables, arguments and return type is possible without it being stored, but not as far as I am aware T-T. Perhapas there is no need to tie it to `TaskFn` and the `TaskConfig` and there could be just another way of inserting tasks into the system...
 * [ ] Each schedule has its own resource map
 * [ ] Built in sync from schedule to schedule + ability to selectively sync resources
 * [ ] Resource-aware scheduling - add ResoruceMut and based on mutability of the Resources passed to a task, order the parallel ones so no races can occur
