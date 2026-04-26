@@ -130,9 +130,18 @@ namespace tskr
     template<typename T>
     struct ParamFetcher<Resource<T>>
     {
-        static Resource<T> fetch(std::shared_ptr<ResourceStore>& store)
+        static Resource<T> fetch(std::shared_ptr<ResourceStore>& store, int)
         {
             return store->get<T>();
+        }
+    };
+
+    template<>
+    struct ParamFetcher<int>
+    {
+        static int fetch(std::shared_ptr<ResourceStore>& store, int index)
+        {
+            return index;
         }
     };
 
@@ -140,7 +149,8 @@ namespace tskr
     /// A compile-time info carrier for either a free function, callable object or a member function.
     /// tparam Fn Funtion pointer to the function to be executed
     /// tparam TaskType the spawn type of the task - Schedueld or Standalone
-    template<auto Fn, TaskSpawnType TaskType = TaskSpawnType::Scheduled>
+    /// tparam Index optional int param that can be passed in on construction (useful for indexing into resources)
+    template<auto Fn, TaskSpawnType TaskType = TaskSpawnType::Scheduled, int Index = 0>
     struct TaskFn
     {
         using task_traits = impl::function_traits<decltype(Fn)>;
@@ -158,7 +168,7 @@ namespace tskr
             {
                 // Call Fn injecting resources from the ResourceStore
                 std::apply([&store](auto... param_types) {
-                    Fn(ParamFetcher<decltype(param_types)>::fetch(store)...);
+                    Fn(ParamFetcher<decltype(param_types)>::fetch(store, Index)...);
                 }, args{});
             }
         }
@@ -168,10 +178,10 @@ namespace tskr
             auto t = std::make_unique<Task>();
             t->fun = [](void* data) {
                 std::shared_ptr<ResourceStore>* store = static_cast<std::shared_ptr<ResourceStore>*>(data);
-                TaskFn<Fn>::run(*store);
+                TaskFn<Fn, TaskType, Index>::run(*store);
             };
             t->payload = &store;
-            t->name = typeid(TaskFn<Fn, TaskType>{}).name();
+            t->name = typeid(TaskFn<Fn, TaskType, Index>{}).name();
             t->spawn_type = TaskType;
             t->schedule_info = schedule_info;
             return t;
@@ -183,7 +193,7 @@ namespace tskr
         auto after(AfterTs...) const
         {
             return TaskConfig<
-                std::tuple<TaskFn<Fn, TaskType>>,
+                std::tuple<TaskFn<Fn, TaskType, Index>>,
                 std::tuple<AfterTs...>,
                 std::tuple<>
             >{};
@@ -195,7 +205,7 @@ namespace tskr
         auto before(BeforeTs...) const
         {
             return TaskConfig<
-                std::tuple<TaskFn<Fn, TaskType>>,
+                std::tuple<TaskFn<Fn, TaskType, Index>>,
                 std::tuple<>,
                 std::tuple<BeforeTs...>>{};
         }
@@ -291,12 +301,12 @@ constexpr auto operator,(A, B)
     return tskr::TaskConfigBase<A, B>{};
 }
 
-template<typename... Ts, auto U, tskr::TaskSpawnType SpawnType>
-constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U, SpawnType>) {
+template<typename... Ts, auto U, tskr::TaskSpawnType SpawnType, int Index>
+constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U, SpawnType, Index>) {
     using tasks_from_cfg = tskr::TaskConfig<Ts...>::tasks_t;
 
     using merged_ts = decltype(std::tuple_cat(
-        std::declval<std::tuple<tskr::TaskFn<U, SpawnType>>>(),
+        std::declval<std::tuple<tskr::TaskFn<U, SpawnType, Index>>>(),
         std::declval<tasks_from_cfg>()
     ));
     return tskr::TaskConfig<merged_ts, std::tuple<>, std::tuple<>>{};
