@@ -6,7 +6,7 @@ set(PROJECT_NAME_UPPER "")
 
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPER) # For defines
 
-set(root_dir "${CMAKE_CURRENT_SOURCE_DIR}")
+set(tskr_root_dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 project(${PROJECT_NAME} VERSION 0.1 LANGUAGES CXX)
 
@@ -39,10 +39,10 @@ else()
     set(platform "unknown")
 endif()
 
-set(build_dir "${root_dir}/build/${platform}/${PROJECT_NAME}")
-set(CMAKE_BUILD_PATH ${build_dir})
+set(tskr_build_dir "${tskr_root_dir}/build/${platform}/${PROJECT_NAME}")
+set(CMAKE_BUILD_PATH ${tskr_build_dir})
 
-set(out_dir "${root_dir}/bin/${platform}/")
+set(tskr_out_dir "${tskr_root_dir}/bin/${platform}/")
 
 # IDE config
 set_property(GLOBAL PROPERTY USE_FOLDERS TRUE)
@@ -61,15 +61,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD_REQUIRED ON
     LINKER_LANGUAGE CXX
     OUTPUT_NAME ${PROJECT_NAME}
-    ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${out_dir}/debug"
-    ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${out_dir}/release"
-    ARCHIVE_OUTPUT_DIRECTORY_OPTIMISED "${out_dir}/optimised"
-    LIBRARY_OUTPUT_DIRECTORY_DEBUG "${out_dir}/debug"
-    LIBRARY_OUTPUT_DIRECTORY_RELEASE "${out_dir}/release"
-    LIBRARY_OUTPUT_DIRECTORY_OPTIMISED "${out_dir}/optimised"
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${out_dir}/debug"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${out_dir}/release"
-    RUNTIME_OUTPUT_DIRECTORY_OPTIMISED "${out_dir}/optimised"
+    ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${tskr_out_dir}/debug"
+    ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${tskr_out_dir}/release"
+    ARCHIVE_OUTPUT_DIRECTORY_OPTIMISED "${tskr_out_dir}/optimised"
+    LIBRARY_OUTPUT_DIRECTORY_DEBUG "${tskr_out_dir}/debug"
+    LIBRARY_OUTPUT_DIRECTORY_RELEASE "${tskr_out_dir}/release"
+    LIBRARY_OUTPUT_DIRECTORY_OPTIMISED "${tskr_out_dir}/optimised"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${tskr_out_dir}/debug"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${tskr_out_dir}/release"
+    RUNTIME_OUTPUT_DIRECTORY_OPTIMISED "${tskr_out_dir}/optimised"
 )
 
 target_sources(${PROJECT_NAME}
@@ -116,7 +116,7 @@ if(${TSKR_BUILD_EXAMPLES_ALL})
                 add_executable(${example_name} ${example})
 
                 set_target_properties(${example_name} PROPERTIES
-                    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/examples"
+                    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/examples"
                 )
 
                 target_link_libraries(${example_name} PRIVATE d3d12.lib dxgi.lib dxguid.lib d3dcompiler.lib)
@@ -154,7 +154,7 @@ elseif(example_defined)
 
     add_executable(${TSKR_BUILD_EXAMPLE} ${example_source})
 
-    set_property(TARGET ${TSKR_BUILD_EXAMPLE} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/examples")
+    set_property(TARGET ${TSKR_BUILD_EXAMPLE} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/examples")
     
     target_link_libraries(${TSKR_BUILD_EXAMPLE} PRIVATE ${PROJECT_NAME})
 
