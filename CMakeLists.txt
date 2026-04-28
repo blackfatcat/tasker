@@ -63,6 +63,7 @@ message("stand: ${TSKR_STANDALONE}; all: ${TSKR_BUILD_EXAMPLES_ALL}; ex: ${TSKR_
 
 if(${TSKR_STANDALONE})
     set(tskr_root_dir "${CMAKE_CURRENT_SOURCE_DIR}")
+    message("stand: ${TSKR_STANDALONE}; all: ${TSKR_BUILD_EXAMPLES_ALL}; ex: ${TSKR_BUILD_EXAMPLE}")
 
     # Build config
     set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Optimised" CACHE STRING "" FORCE)
