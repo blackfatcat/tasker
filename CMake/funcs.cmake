@@ -3,6 +3,7 @@ Function(create_example)
     Set(oneValueArgs SRC_FILE)
     Set(multiValueArgs "")
     
+    message("Called...")
     cmake_parse_arguments(EXAMPLE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     get_filename_component(example_name ${EXAMPLE_SRC_FILE} NAME_WE)
         
