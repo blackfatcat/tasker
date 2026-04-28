@@ -2,6 +2,6 @@
 
 IF NOT EXIST "build-win" mkdir "build-win"
 cd build-win
-cmake -G "Visual Studio 18 2026" -A x64 -DTSKR_BUILD_EXAMPLES_ALL=1 ..\CMakeLists.txt
+cmake -G "Visual Studio 18 2026" -A x64 -DTSKR_BUILD_EXAMPLES_ALL=ON ..\CMakeLists.txt
 
 PAUSE

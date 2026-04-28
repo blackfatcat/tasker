@@ -19,6 +19,7 @@ build.bat uses: "Visual Studio 18 2026" ‼️ Requires latest CMake ‼️
 #### Build options:
 * `-DTSKR_BUILD_EXAMPLES_ALL=1` - builds all examples in the example folder
 * `-DTSKR_BUILD_EXAMPLE=simple` - builds a specific example in the example folder (in this case the simple.cpp)
+* `-DTSKR_STANDALONE` - ON by default, builds the project by itself, setting a bunch of CMAKE build options (Configurations, build paths, binary paths, etc...)
 
 ## 🚀 Core Features
 
