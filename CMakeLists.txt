@@ -59,11 +59,9 @@ target_include_directories(${TSKR_PROJECT_NAME}
         src/extern
 )
 
-message("stand: ${TSKR_STANDALONE}; all: ${TSKR_BUILD_EXAMPLES_ALL}; ex: ${TSKR_BUILD_EXAMPLE}")
 
 if(${TSKR_STANDALONE})
     set(tskr_root_dir "${CMAKE_CURRENT_SOURCE_DIR}")
-    message("stand: ${TSKR_STANDALONE}; all: ${TSKR_BUILD_EXAMPLES_ALL}; ex: ${TSKR_BUILD_EXAMPLE}")
 
     # Build config
     set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Optimised" CACHE STRING "" FORCE)
@@ -107,11 +105,11 @@ if(${TSKR_STANDALONE})
 
         # All examples
         foreach(example ${EXAMPLE_SOURCES})
-            create_example(SRC_FILE "${example}")
+            tskr_create_example(SRC_FILE "${example}")
         endforeach()
     elseif(TSKR_BUILD_EXAMPLE)
         #Single example
         set(example_source "examples/${TSKR_BUILD_EXAMPLE}.cpp")
-        create_example(SRC_FILE "${example_source}")
+        tskr_create_example(SRC_FILE "${example_source}")
     endif()
 endif()
