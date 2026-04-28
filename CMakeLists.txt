@@ -59,7 +59,9 @@ target_include_directories(${TSKR_PROJECT_NAME}
         src/extern
 )
 
-if(TSKR_STANDALONE)
+message("stand: ${TSKR_STANDALONE}; all: ${TSKR_BUILD_EXAMPLES_ALL}; ex: ${TSKR_BUILD_EXAMPLE}")
+
+if(${TSKR_STANDALONE})
     set(tskr_root_dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
     # Build config
