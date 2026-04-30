@@ -67,6 +67,21 @@ namespace tskr
         ScheduleInfo schedule_info;
     };
 
+    // Task constrains
+    template<typename T>
+    concept HasMakeTaskFn = requires(T task, TaskContext& ctx) { task.make_task(ctx); };
+
+    namespace impl {
+        template<typename T>
+        struct IsTupleOfTaskFns : std::false_type {};
+
+        template<typename... Ts>
+        struct IsTupleOfTaskFns<std::tuple<Ts...>> : std::bool_constant<(HasMakeTaskFn<Ts> && ...)> {};
+    }
+
+    template<typename T>
+    concept TupleOfTaskFns = impl::IsTupleOfTaskFns<T>::value;
+
     /// @brief The backbone of the system - a single point of execution tied to a function
     struct Task
     {
@@ -87,17 +102,16 @@ namespace tskr
     /// @tparam TasksTuple Tasks to be ran in parallel
     /// @tparam AfterTuple Tasks in TasksTuple will be executed after the ones specified by AfterTuple
     /// @tparam BeforeTuple Tasks in TasksTuple will be executed before the ones specified by BeforeTuple
-    template<typename TasksTuple, typename AfterTuple, typename BeforeTuple>
+    template<TupleOfTaskFns TasksTuple, TupleOfTaskFns AfterTuple, TupleOfTaskFns BeforeTuple>
     struct TaskConfig
     {
-        // TODO: Use with tasker to construct and run the actual tasks
         using tasks_t = TasksTuple;
         using after_t = AfterTuple;
         using before_t = BeforeTuple;
 
         /// @brief Schedule these functions `after` all specified with this call have finished
         /// @param AfterTs Functions to be executed before the ones in the TaskConfig
-        template<typename... AfterTs>
+        template<HasMakeTaskFn... AfterTs>
         auto after(AfterTs...) const
         {
             // Concatenate the two lists to not lose the previous dependencies
@@ -110,7 +124,7 @@ namespace tskr
 
         /// @brief Schedule these functions `before` all specified with this call have finished
         /// @param AfterTs Functions to be executed after the ones in the TaskConfig
-        template<typename... BeforeTs>
+        template<HasMakeTaskFn... BeforeTs>
         auto before(BeforeTs...) const
         {
             // Concatenate the two lists to not lose the previous dependencies
@@ -120,16 +134,9 @@ namespace tskr
             ));
             return TaskConfig<TasksTuple, AfterTuple, merged_befores>{};
         }
-    };
 
-    /// @brief
-    /// Wrapper for the comma operator and just a bunch of functions without dependencies
-    template<typename... Ts>
-    using TaskConfigBase = TaskConfig<
-        std::tuple<Ts...>,
-        std::tuple<>,
-        std::tuple<>
-    >;
+        // TODO: overloads for TaskConfig so that task3.after(task2{}.after(task1{}))
+    };
 
     /// @brief Helper wrapper around Resource types,
     /// used to unpack and inject resources from the resource map into tasks
@@ -201,7 +208,7 @@ namespace tskr
 
         /// @brief Schedule this function `after` all specified with this call have finished
         /// @param AfterTs Functions to be executed before this one
-        template<typename... AfterTs>
+        template<HasMakeTaskFn... AfterTs>
         auto after(AfterTs...) const
         {
             return TaskConfig<
@@ -213,7 +220,7 @@ namespace tskr
 
         /// @brief Schedule this function `before` all specified with this call have finished
         /// @param AfterTs Functions to be executed after this one
-        template<typename... BeforeTs>
+        template<HasMakeTaskFn... BeforeTs>
         auto before(BeforeTs...) const
         {
             return TaskConfig<
@@ -230,7 +237,7 @@ namespace tskr
         std::vector<std::shared_ptr<TaskNode>> dependents; // outgoing edges
         std::atomic<int> deps_remaining;                   // incoming edges
 
-        template<typename TaskFnT>
+        template<HasMakeTaskFn TaskFnT>
         static std::shared_ptr<TaskNode> make_from_taskfn(TaskFnT task, TaskContext& ctx)
         {
             std::shared_ptr<TaskNode> node = std::make_shared<TaskNode>();
@@ -239,8 +246,8 @@ namespace tskr
             return node;
         }
 
-        template<typename... Ts>
-        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(TaskConfig<Ts...> task_cfg, TaskContext& ctx)
+        template<TupleOfTaskFns... TaskTuples>
+        static std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> build_node_map(TaskConfig<TaskTuples...> task_cfg, TaskContext& ctx)
         {
             using tasks_tuple = decltype(task_cfg)::tasks_t;
             auto tasks = tasks_tuple{};
@@ -256,12 +263,12 @@ namespace tskr
             return map;
         }
 
-        template<typename... Ts>
-        static void wire_dependencies(TaskConfig<Ts...> cfg, std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>>& map, TaskContext& ctx)
+        template<TupleOfTaskFns... TaskTuples>
+        static void wire_dependencies(TaskConfig<TaskTuples...> cfg, std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>>& map, TaskContext& ctx)
         {
-            using tasks_ts = typename TaskConfig<Ts...>::tasks_t;
-            using after_ts = typename TaskConfig<Ts...>::after_t;
-            using before_ts = typename TaskConfig<Ts...>::before_t;
+            using tasks_ts = typename TaskConfig<TaskTuples...>::tasks_t;
+            using after_ts = typename TaskConfig<TaskTuples...>::after_t;
+            using before_ts = typename TaskConfig<TaskTuples...>::before_t;
 
             // Something like (TaskA, TaskB).after(TaskX, TaskY) needs to build edges like:
             // TaskX -> TaskA
@@ -303,11 +310,20 @@ namespace tskr
         }
     };
 
+    /// @brief
+    /// Wrapper for the comma operator and just a bunch of functions without dependencies
+    template<HasMakeTaskFn... Ts>
+    using TaskConfigBase = tskr::TaskConfig<
+        std::tuple<Ts...>,
+        std::tuple<>,
+        std::tuple<>
+    >;
 } // namespace tskr
+
 
 /// @brief
 /// Syntax sugar so that `(TaskFn<fun1>, TaskFn<fun2>)` returns a TaskConfig for chaining before and after calls
-template<typename A, typename B >
+template<tskr::HasMakeTaskFn A, tskr::HasMakeTaskFn B >
 constexpr auto operator,(A, B)
 {
     return tskr::TaskConfigBase<A, B>{};
@@ -315,7 +331,7 @@ constexpr auto operator,(A, B)
 
 /// @brief
 /// Syntax sugar so that `(TaskFn<fun1>, TaskFn<fun2>, TaskFn<fun3>, ... )` returns a TaskConfig for chaining before and after calls
-template<typename... Ts, auto U, tskr::TaskSpawnType SpawnType, int Index>
+template<tskr::TupleOfTaskFns... Ts, auto U, tskr::TaskSpawnType SpawnType, int Index>
 constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U, SpawnType, Index>) {
     using tasks_from_cfg = tskr::TaskConfig<Ts...>::tasks_t;
 
@@ -328,7 +344,7 @@ constexpr auto operator,(tskr::TaskConfig<Ts...>, tskr::TaskFn<U, SpawnType, Ind
 
 /// @brief
 /// Syntax sugar so that `(TaskFn<fun1>, TaskFn<fun2>, ...), (TaskFn<fun3>, TaskFn<fun4>,...) )` returns a TaskConfig for chaining before and after calls
-template<typename... As, typename... Bs>
+template<tskr::TupleOfTaskFns... As, tskr::TupleOfTaskFns... Bs>
 constexpr auto operator,(tskr::TaskConfig<As...>, tskr::TaskConfig<Bs...>) {
     using tasks_from_cfg_a = tskr::TaskConfig<As...>::tasks_t;
     using tasks_from_cfg_b = tskr::TaskConfig<Bs...>::tasks_t;

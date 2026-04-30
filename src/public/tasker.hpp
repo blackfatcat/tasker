@@ -55,17 +55,13 @@ namespace tskr
         /// @note Tasks can be organised within a `TaskConfig` with calls to before() and after(), if not, the scheduler will try to execute them in parallel.
         /// See (TODO: insert git link) for examples
         /// @return reference to self for chaining
-        template<typename Schedule, typename ...Tasks>
-        Tasker& add_tasks(TaskConfig<Tasks...> tasks)
+        template<typename Schedule, TupleOfTaskFns... TaskTuples>
+        Tasker& add_tasks(TaskConfig<TaskTuples...> tasks)
         {
             KEY_TYPE schedule_id = typeid(Schedule).accessor();
             assert(m_TasksPerSchedule.contains(schedule_id) && "Schedule deos not exist. Add it first with add_schedules.");
 
             ScheduleInfo& schedule_info = m_TasksPerSchedule.at(schedule_id).first;
-
-            using tasks_ts = typename TaskConfig<Tasks...>::tasks_t;
-            using after_ts = typename TaskConfig<Tasks...>::after_t;
-            using before_ts = typename TaskConfig<Tasks...>::before_t;
 
             m_TaskContext.schedule_info = schedule_info;
             std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks, m_TaskContext);
@@ -80,7 +76,7 @@ namespace tskr
             return *this;
         }
 
-        template<typename Schedule, typename ...Tasks>
+        template<typename Schedule, HasMakeTaskFn ...Tasks>
         Tasker& add_tasks(Tasks... tasks)
         {
             add_tasks<Schedule>(TaskConfigBase<Tasks...>{});
