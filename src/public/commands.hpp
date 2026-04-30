@@ -15,24 +15,24 @@ namespace tskr
     private:
         std::shared_ptr<WorkerPool> m_WorkerPool;
 
-        // TODO: This really needs to get out of here...
-        std::shared_ptr<ResourceStore>* m_Resources;
+        TaskContext m_TaskContext;
     public:
-        Commands() : m_Resources(nullptr) {}
-        Commands(std::shared_ptr<WorkerPool> pool, std::shared_ptr<ResourceStore>* resources);
+        Commands() {}
+        Commands(std::shared_ptr<WorkerPool>& pool, std::shared_ptr<ResourceStore>& resources);
         ~Commands();
 
         template<typename Fn>
         void spawn(Fn f)
         {
-            ScheduleInfo info = (*m_Resources)->get_ref<ScheduleInfo>();
+            ScheduleInfo info = m_TaskContext.store->get_ref<ScheduleInfo>();
+            m_TaskContext.schedule_info = info;
             switch (Fn::task_type)
             {
             case TaskSpawnType::Standalone:
-                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, *m_Resources, info), false);
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_TaskContext), false);
                 break;
             case TaskSpawnType::Scheduled:
-                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, *m_Resources, info), true);
+                m_WorkerPool->enqueue(TaskNode::make_from_taskfn(f, m_TaskContext), true);
                 break;
             default:
                 break;

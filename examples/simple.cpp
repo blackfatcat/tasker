@@ -34,9 +34,9 @@ void sync()
     done1.store(true, std::memory_order_release);
 }
 
-void task_inner()
+void task_inner(tskr::Resource<VecRes> res)
 {
-    std::cout << "Inner"<< std::endl;
+    std::cout << "Inner Access: vec[0] = " << res->vec[0] << std::endl;
 }
 
 void task1(tskr::Commands commands)

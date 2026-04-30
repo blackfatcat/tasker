@@ -21,6 +21,8 @@ namespace tskr
         // TODO: Move this to per-schedule instance + sync betweem non-parallel schedules
         std::shared_ptr<ResourceStore> m_Resources;
 
+        TaskContext m_TaskContext;
+
         std::atomic_bool m_Running{ true };
     public:
         Tasker(uint8_t thread_count = std::thread::hardware_concurrency(), size_t per_worker_cap = 256);
@@ -65,7 +67,8 @@ namespace tskr
             using after_ts = typename TaskConfig<Tasks...>::after_t;
             using before_ts = typename TaskConfig<Tasks...>::before_t;
 
-            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks, m_Resources, schedule_info);
+            m_TaskContext.schedule_info = schedule_info;
+            std::unordered_map<KEY_TYPE, std::shared_ptr<TaskNode>> map = TaskNode::build_node_map(tasks, m_TaskContext);
 
             std::vector<std::shared_ptr<TaskNode>>& task_nodes = m_TasksPerSchedule.at(schedule_id).second;
 

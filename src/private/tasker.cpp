@@ -11,9 +11,11 @@ namespace tskr
         m_Workers = std::make_shared<WorkerPool>(thread_count, per_worker_cap);
         m_Resources = std::make_shared<ResourceStore>();
 
+        m_TaskContext.store = m_Resources;
+
         // Insert common resources
         m_Resources->insert(Running{});
-        m_Resources->insert(Commands(m_Workers, &m_Resources));
+        m_Resources->insert(Commands(m_Workers, m_Resources));
         m_Resources->insert(ScheduleInfo{});
     }
 
