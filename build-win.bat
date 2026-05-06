@@ -1,4 +1,4 @@
-@REM Creates the windows build files using VS26 build tools and generates all example projects
+:: Creates the windows build files using VS26 build tools and generates all example projects
 
 IF NOT EXIST "build-win" mkdir "build-win"
 cd build-win
