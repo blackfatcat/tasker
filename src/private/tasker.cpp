@@ -55,7 +55,7 @@ namespace tskr
                     m_Workers->add_task_count(tasks.second.size());
                     for (auto& task : tasks.second)
                     {
-                        m_Workers->enqueue(task, false);
+                        m_Workers->enqueue(task.get(), false);
                     }
                 }
                 m_Workers->wait_for_all();
@@ -152,12 +152,12 @@ namespace tskr
                 auto& nodes = schedule_info_and_nodes.second;
 
                 for (auto& node : nodes) {
-                    std::cout << "  Task: " << extract_task_name(node->task->name) << "\n";
+                    std::cout << "  Task: " << extract_task_name(node->task.name) << "\n";
                     std::cout << "    Depends on: " << node->deps_remaining << "\n";
                     std::cout << "    Dependents: ";
 
                     for (auto& dep : node->dependents)
-                        std::cout << extract_task_name(dep->task->name) << " ";
+                        std::cout << extract_task_name(dep->task.name) << " ";
 
                     std::cout << "\n\n";
                 }
@@ -194,17 +194,17 @@ namespace tskr
                     for (size_t j = 0; j < nodes.size(); j++)
                     {
                         auto& node = nodes[j];
-                        std::string name = extract_task_name(node->task->name);
+                        std::string name = extract_task_name(node->task.name);
                         out << "      \"" << name << "\";\n";
                     }
 
                     // Emit edges
                     for (auto& node : nodes)
                     {
-                        std::string from = extract_task_name(node->task->name);
+                        std::string from = extract_task_name(node->task.name);
                         for (auto& dep : node->dependents)
                         {
-                            std::string to = extract_task_name(dep->task->name);
+                            std::string to = extract_task_name(dep->task.name);
                             out << "      \"" << from << "\" -> \"" << to << "\";\n";
                         }
                     }

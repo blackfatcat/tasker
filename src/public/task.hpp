@@ -85,16 +85,20 @@ namespace tskr
     /// @brief The backbone of the system - a single point of execution tied to a function
     struct Task
     {
+        Task() : fun(nullptr), payload(nullptr), name(nullptr) {}
+
+        Task(const Task& other) = default;
+        Task& operator= (const Task& other) = default;
+
         using Fn = void(*)(void*);
 
         Fn fun;
         void* payload;
         const char* name;
-        std::atomic<int> deps{ 0 };
         TaskSpawnType spawn_type = TaskSpawnType::Scheduled;
 
         // TODO: Get rid of this once it's safe to change it on the main thread and query it on another
-        ScheduleInfo schedule_info;
+        ScheduleInfo schedule_info{};
     };
 
     /// @brief 
@@ -148,16 +152,16 @@ namespace tskr
     template<typename T>
     struct ParamFetcher<Resource<T>>
     {
-        static Resource<T> fetch(std::shared_ptr<ResourceStore>& store, int)
+        static Resource<T> fetch(TaskContext& ctx, int)
         {
-            return store->get<T>();
+            return ctx.store->get<T>();
         }
     };
 
     template<>
     struct ParamFetcher<int>
     {
-        static int fetch(std::shared_ptr<ResourceStore>& store, int index)
+        static int fetch(TaskContext& ctx, int index)
         {
             return index;
         }
@@ -178,31 +182,31 @@ namespace tskr
 
         static constexpr TaskSpawnType task_type = TaskType;
 
-        static void run(std::shared_ptr<ResourceStore>& store)
+        static void run(TaskContext& ctx)
         {
             if constexpr (std::tuple_size_v<args> <= 0)
                 Fn();
             else
             {
                 // Call Fn injecting resources from the ResourceStore
-                std::apply([&store](auto... param_types) {
-                    Fn(ParamFetcher<decltype(param_types)>::fetch(store, Index)...);
+                std::apply([&ctx](auto... param_types) {
+                    Fn(ParamFetcher<decltype(param_types)>::fetch(ctx, Index)...);
                 }, args{});
             }
         }
 
         // TaskFn -> Task object
-        static std::unique_ptr<Task> make_task(TaskContext& ctx)
+        static Task make_task(TaskContext& ctx)
         {
-            auto t = std::make_unique<Task>();
-            t->fun = [](void* data) {
-                std::shared_ptr<ResourceStore>* store = static_cast<std::shared_ptr<ResourceStore>*>(data);
-                TaskFn<Fn, TaskType, Index>::run(*store);
+            Task t;
+            t.fun = [](void* data) {
+                TaskContext* ctx = static_cast<TaskContext*>(data);
+                TaskFn<Fn, TaskType, Index>::run(*ctx);
             };
-            t->payload = &ctx.store;
-            t->name = typeid(TaskFn<Fn, TaskType, Index>{}).name();
-            t->spawn_type = TaskType;
-            t->schedule_info = ctx.schedule_info;
+            t.payload = &ctx;
+            t.name = typeid(TaskFn<Fn, TaskType, Index>{}).name();
+            t.spawn_type = TaskType;
+            t.schedule_info = ctx.schedule_info;
             return t;
         }
 
@@ -233,9 +237,29 @@ namespace tskr
     /// @brief Task + dependencies
     struct TaskNode
     {
-        std::unique_ptr<Task> task = nullptr;
-        std::vector<std::shared_ptr<TaskNode>> dependents; // outgoing edges
-        std::atomic<int> deps_remaining;                   // incoming edges
+        Task task{};
+        size_t id = 0;
+        std::vector<std::shared_ptr<TaskNode>> dependents{};    // outgoing edges
+        std::atomic<int> deps_remaining{ 0 };                   // incoming edges
+
+        TaskNode() : task(Task{}) {}
+
+        TaskNode(const TaskNode& other)
+        {
+            copy_from_other(other);
+        }
+
+        TaskNode& operator= (const TaskNode& other)
+        {
+            copy_from_other(other);
+        }
+
+        void copy_from_other(const TaskNode& other)
+        {
+            this->task = other.task;
+            this->dependents = other.dependents;
+            this->deps_remaining.exchange(other.deps_remaining.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        }
 
         template<HasMakeTaskFn TaskFnT>
         static std::shared_ptr<TaskNode> make_from_taskfn(TaskFnT task, TaskContext& ctx)

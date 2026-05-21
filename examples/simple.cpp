@@ -36,7 +36,9 @@ void sync()
 
 void task_inner(tskr::Resource<VecRes> res)
 {
-    std::cout << "Inner Access: vec[0] = " << res->vec[0] << std::endl;
+    static_cast<void*>(&res);
+
+    res->vec[0] = 7;
 }
 
 void task1(tskr::Commands commands)
@@ -90,8 +92,8 @@ void task7(
     assert(done1.load(std::memory_order_acquire) && done2.load(std::memory_order_acquire));
 
     // Stops Main and Render from repeating, terminating the program
-    main_schedule_repeating->stop();
-    sync_schedule_repeating->stop();
+    //main_schedule_repeating->stop();
+    //sync_schedule_repeating->stop();
 
     done7.store(true, std::memory_order_release);
 }

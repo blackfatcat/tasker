@@ -14,8 +14,9 @@ namespace tskr
     class WorkStealingDeque
     {
     private:
-        size_t m_Cap; 
-        std::vector<std::unique_ptr<std::atomic<std::shared_ptr<T>>>> m_TaskBuf;
+        size_t m_Cap;
+
+        std::atomic<T*>* m_TaskBuf;
         std::atomic<size_t> m_Top;
         std::atomic<size_t> m_Bottom;
     public:
@@ -24,46 +25,56 @@ namespace tskr
             m_Top(0),
             m_Bottom(0)
         {
-            m_TaskBuf.reserve(m_Cap);
+            m_TaskBuf = new std::atomic<T*>[m_Cap];
+
             for (size_t i = 0; i < m_Cap; i++)
             {
-                m_TaskBuf.push_back(std::make_unique<std::atomic<std::shared_ptr<T>>>());
+                m_TaskBuf[i] = nullptr;
             }
         }
         ~WorkStealingDeque()
         {
-            m_TaskBuf.clear();
+            delete[] m_TaskBuf;
         }
 
-        WorkStealingDeque(const WorkStealingDeque&) = delete;
-        WorkStealingDeque& operator=(const WorkStealingDeque&) = delete;
-        WorkStealingDeque(WorkStealingDeque&&) = delete;
-        WorkStealingDeque& operator=(WorkStealingDeque&&) = delete;
+        // TODO: delete copy and move constructors and operator= when replaced with no-grow vec
 
-        /// @brief
-        /// Pushes a task to the back of the queue, doubling its size if no space is left
-        /// @param task Task to be pushed
-        void push(std::shared_ptr<T> task)
+        WorkStealingDeque(const WorkStealingDeque& other)
         {
-            size_t bottom = m_Bottom.load(std::memory_order_relaxed);
-            size_t top = m_Top.load(std::memory_order_relaxed);
+            copy_from_other(other);
+        }
 
-            // Full?
-            if (bottom - top >= m_Cap)
-            {
-                m_Cap *= 2;
-                m_TaskBuf.resize(m_Cap);
-            }
+        WorkStealingDeque& operator=(const WorkStealingDeque& other)
+        {
+            copy_from_other(other);
 
-            m_TaskBuf[bottom & (m_Cap - 1)]->store(task, std::memory_order_relaxed);
-            m_Bottom.store(bottom + 1, std::memory_order_release);
+            return *this;
+        }
+
+        WorkStealingDeque(const WorkStealingDeque&& other)
+        {
+            copy_from_other(other);
+        }
+
+        WorkStealingDeque& operator=(const WorkStealingDeque&& other)
+        {
+            copy_from_other(other);
+
+            return *this;
+        }
+
+        void copy_from_other(const WorkStealingDeque& other)
+        {
+            this->m_Top.exchange(other.m_Top.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            this->m_Bottom.exchange(other.m_Bottom.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            this->m_Cap = other.m_Cap;
         }
 
         /// @brief
         /// Tries to push a task to the back of the queue, without increasing the size if no space is left
         /// @param task Task to be pushed
         /// @return `true` if task was successfully pushed, `false` otherwise
-        bool try_push(std::shared_ptr<T> task)
+        bool try_push(T* task)
         {
             size_t bottom = m_Bottom.load(std::memory_order_relaxed);
             size_t top = m_Top.load(std::memory_order_relaxed);
@@ -72,7 +83,7 @@ namespace tskr
             if (bottom - top >= m_Cap)
                 return false;
 
-            m_TaskBuf[bottom & (m_Cap - 1)]->store(task, std::memory_order_relaxed);
+            m_TaskBuf[bottom & (m_Cap - 1)].store(task, std::memory_order_relaxed);
             m_Bottom.store(bottom + 1, std::memory_order_release);
 
             return true;
@@ -82,9 +93,11 @@ namespace tskr
         /// Tries to retrieve a task from the front of the queue
         /// @param task Reference to a task that will be filled up, if the operation succeeds
         /// @return `true` if task was successfully retrieved, `false` otherwise
-        bool try_pop(std::shared_ptr<T> task)
+        T* try_pop()
         {
-            size_t bottom = m_Bottom.load(std::memory_order_relaxed) - 1;
+            size_t bottom = m_Bottom.load(std::memory_order_relaxed);
+
+            bottom = bottom > 0 ? bottom - 1 : 0;
 
             m_Bottom.store(bottom); // Ceq_cst enforeces total order with thieves's load
 
@@ -99,17 +112,16 @@ namespace tskr
                     if (!m_Top.compare_exchange_strong(top, top + 1, std::memory_order_relaxed))
                     {
                         m_Bottom.store(bottom + 1, std::memory_order_relaxed);
-                        return false;
+                        return nullptr;
                     }
                     m_Bottom.store(bottom + 1, std::memory_order_relaxed);
                 }
-                task = m_TaskBuf[bottom & (m_Cap - 1)]->load(std::memory_order_relaxed);
-                return true;
+                return m_TaskBuf[bottom & (m_Cap - 1)].exchange(nullptr, std::memory_order_relaxed);
             }
             else
             {
                 m_Bottom.store(bottom + 1, std::memory_order_relaxed);
-                return false;
+                return nullptr;
             }
         }
 
@@ -117,25 +129,23 @@ namespace tskr
         /// Tries to retrieve a task from the front of the queue
         /// @param task Reference to a task that will be filled up, if the operation succeeds
         /// @return `true` if task was successfully retrieved, `false` otherwise
-        bool try_steal(std::shared_ptr<T> task)
+        T* try_steal()
         {
             size_t top = m_Top.load(std::memory_order_relaxed);
             size_t bottom = m_Bottom.load(); // Ceq_cst enforces total order with the thread stolen from
 
             // Empty?
             if (bottom - top <= 0)
-                return false;
-
-            std::shared_ptr<T> t = m_TaskBuf[top & (m_Cap - 1)]->load(std::memory_order_relaxed);
+                return nullptr;
 
             // Make sure it was not consumed in the mean time
             if (m_Top.compare_exchange_strong(top, top + 1, std::memory_order_seq_cst, std::memory_order_relaxed))
             {
-                task = t;
-                return true;
+                T* t = m_TaskBuf[top & (m_Cap - 1)].exchange(nullptr, std::memory_order_relaxed);
+                return t;
             }
 
-            return false;
+            return nullptr;
         }
     };
 } // namespace tskr

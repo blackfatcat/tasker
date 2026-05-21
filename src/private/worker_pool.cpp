@@ -1,5 +1,7 @@
 #include "worker_pool.hpp"
 
+#include "commands.hpp"
+
 #ifdef TASKER_WINDOWS
 
 #define VC_EXTRALEAN
@@ -13,6 +15,8 @@
 #include <sched.h>
 #endif // TSKR_LINUX
 
+#include <iostream>
+
 namespace tskr
 {
     thread_local int WorkerPool::s_WorkerId = -1;
@@ -24,12 +28,12 @@ namespace tskr
         m_WorkerCap(per_worker_cap)
     {
         m_Workers.reserve(m_ThreadCount);
-        m_LocalQueues.reserve(m_ThreadCount);
+        m_LocalQueues.resize(m_ThreadCount);
 
         for (uint8_t worker_id = 0; worker_id < m_ThreadCount; worker_id++)
         {
             // Create worker queues
-            m_LocalQueues.emplace_back(std::make_unique<WorkStealingDeque<TaskNode>>(m_WorkerCap));
+            m_LocalQueues[worker_id] = WorkStealingDeque<TaskNode>(m_WorkerCap);
         }
     }
     
@@ -38,17 +42,17 @@ namespace tskr
         stop();
     }
 
-    void WorkerPool::enqueue(std::shared_ptr<TaskNode> task, bool increase_task_counter)
+    void WorkerPool::enqueue(TaskNode* task, bool increase_task_counter)
     {
         int id = s_WorkerId;
 
-        if (task->task->spawn_type == TaskSpawnType::Scheduled && increase_task_counter)
+        if (task->task.spawn_type == TaskSpawnType::Scheduled && increase_task_counter)
             add_task_count(1);
 
         if (id >= 0 && id < m_ThreadCount)
         {
             // Worker thread called -> local push
-            if (!m_LocalQueues[id]->try_push(task))
+            if (!m_LocalQueues[id].try_push(task))
                 m_GlobalQueue.push(task); // Fall back to global if local is full
         }
         else
@@ -137,22 +141,31 @@ namespace tskr
         // HOT PATH! Ordering is not that important when shutting down...
         while (!m_Shutdown.load(std::memory_order_relaxed))
         {
-            std::shared_ptr<TaskNode> task_node = nullptr;
+            TaskNode* task_node = local_queue.try_pop();
+
+            //if (task_node)
+            //    std::cout << "Local pop" << std::endl;
 
             // Local queue empty?
-            if (!local_queue->try_pop(task_node))
+            if (!task_node)
             {
                 // Try stealing from other workers
                 for (uint8_t i = 0; i < m_ThreadCount && !task_node; i++)
                 {
                     if (i == worker_id) continue;
-                    m_LocalQueues[i]->try_steal(task_node);
+                    task_node = m_LocalQueues[i].try_steal();
+                    //if (task_node)
+                    //    std::cout << "Stolen" << std::endl;
                 }
             }
 
             // Still no task? 
             if (!task_node)
+            {
                 m_GlobalQueue.try_pop(task_node);
+                //if (task_node)
+                //    std::cout << "Global pop" << std::endl;
+            }
 
             if (!task_node)
             {
@@ -161,11 +174,13 @@ namespace tskr
                 continue;
             }
 
-            if (task_node->deps_remaining.load(std::memory_order_acquire) <= 0)
+            if (task_node->deps_remaining.load(std::memory_order_acquire) == 0)
             {
                 // TODO: Figure out a way to safely access the store within task->payload from here and get the schedule info resource
+                //std::shared_ptr<TaskContext>* ctx = static_cast<std::shared_ptr<TaskContext>*>(task_node->task.payload);
+                //auto cmds = (*ctx)->store->get<Commands>();
 
-                ScheduleInfo& schedule_info = task_node->task->schedule_info;
+                ScheduleInfo& schedule_info = task_node->task.schedule_info;
 
                 // Check affinity and number of workers active
                 if (!worker_can_run(schedule_info, worker_id))
@@ -175,13 +190,15 @@ namespace tskr
                 }
 
                 schedule_info.active_workers->fetch_add(1, std::memory_order_release);
-                task_node->task->fun(task_node->task->payload);
+                task_node->task.fun(task_node->task.payload);
                 schedule_info.active_workers->fetch_sub(1, std::memory_order_release);
+
+                //cmds->unalive_task(task_node->id);
 
                 for (auto& dependent : task_node->dependents)
                     dependent->deps_remaining.fetch_sub(1, std::memory_order_release);
 
-                if(task_node->task->spawn_type != TaskSpawnType::Standalone)
+                if(task_node->task.spawn_type != TaskSpawnType::Standalone)
                     m_TasksRemaining.fetch_sub(1, std::memory_order_release);
             }
             else

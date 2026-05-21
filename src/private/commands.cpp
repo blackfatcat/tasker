@@ -10,4 +10,9 @@ namespace tskr
     Commands::~Commands()
     {
     }
+    void Commands::unalive_task(size_t task_id)
+    {
+        if (m_TasksAlive.contains(task_id))
+            m_TasksAlive.erase(task_id);
+    }
 } // namespace tskr

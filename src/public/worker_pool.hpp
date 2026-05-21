@@ -4,6 +4,7 @@
 #include <atomic>
 #include <thread>
 #include <cstdint>
+#include <condition_variable>
 
 #include "task.hpp"
 #include "queue.hpp"
@@ -16,13 +17,14 @@ namespace tskr
     private:
         std::vector<std::thread> m_Workers;
 
-        std::vector<std::unique_ptr<WorkStealingDeque<TaskNode>>> m_LocalQueues;
-        rigtorp::MPMCQueue<std::shared_ptr<TaskNode>> m_GlobalQueue;
+        // TODO: Replace with no-grow vec
+        std::vector<WorkStealingDeque<TaskNode>> m_LocalQueues;
+        rigtorp::MPMCQueue<TaskNode*> m_GlobalQueue;
 
         size_t m_WorkerCap;
         static thread_local int s_WorkerId;
 
-        std::atomic<size_t> m_TasksRemaining{ 0 };
+        std::atomic_size_t m_TasksRemaining{ 0 };
         std::atomic<bool> m_Shutdown{ false };
         uint8_t m_ThreadCount;
     public:
@@ -33,7 +35,7 @@ namespace tskr
         /// @brief Note: if a worker thread adds it, will be added directly to its own worker queue
         /// @brief Note: if a non-worker thread adds it (the main thread), will be added to the global queue for any* thread to grab
         /// @param tracked Should the task counter be increased when adding this task
-        void enqueue(std::shared_ptr<TaskNode> task, bool increase_task_counter = true);
+        void enqueue(TaskNode* task, bool increase_task_counter = true);
 
         /// @brief Start the worker loops
         void work();
